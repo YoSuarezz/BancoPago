@@ -1,0 +1,48 @@
+package com.bancopago.backend.domain.person;
+
+import com.bancopago.backend.crosscutting.helpers.TextHelper;
+import com.bancopago.backend.domain.BaseDomain;
+import com.bancopago.backend.domain.enums.DocumentType;
+import com.bancopago.backend.domain.enums.PersonType;
+import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
+import com.bancopago.backend.domain.person.vo.DocumentNumber;
+import com.bancopago.backend.domain.person.vo.Email;
+
+import java.util.Objects;
+import java.util.UUID;
+
+public abstract class PersonDomain extends BaseDomain {
+
+    private final DocumentNumber documentNumber;
+    private final String name;
+    private final Email email;
+    private final String phone;
+    private final PersonType type;
+
+    protected PersonDomain(UUID id, DocumentNumber documentNumber, String name,
+                           Email email, String phone, PersonType type) {
+        super(id);
+        this.documentNumber = Objects.requireNonNull(documentNumber);
+        this.name = validateName(name);
+        this.email = Objects.requireNonNull(email);
+        this.phone = TextHelper.applyTrim(phone);
+        this.type = Objects.requireNonNull(type);
+    }
+
+    private static String validateName(String name) {
+        var trimmed = TextHelper.applyTrim(name);
+        if (TextHelper.isBlank(trimmed)) {
+            throw InvalidPersonException.create(PersonError.NAME_EMPTY);
+        }
+        return trimmed;
+    }
+
+    public DocumentNumber getDocumentNumber() { return documentNumber; }
+    public DocumentType getDocumentType() { return documentNumber.type(); }
+    public String getDocument() { return documentNumber.value(); }
+    public String getName() { return name; }
+    public Email getEmailObject() { return email; }
+    public String getEmail() { return email.value(); }
+    public String getPhone() { return phone; }
+    public PersonType getPersonType() { return type; }
+}
