@@ -1,13 +1,13 @@
 # BancoPago — Sistema Integral de Pagos
 ## Proyecto de Práctica · Bancolombia SWE Backend Junior
 
-> **Propósito:** Construir un sistema de pagos realista que demuestre dominio de los requisitos explícitos e implícitos de la vacante. No es un tutorial — es un proyecto que puedes mostrar en la entrevista, explicar decisiones de arquitectura, y extender progresivamente.
+> **Propósito:** Construir un sistema de pagos realista que demuestre dominio de los requisitos explícitos e implícitos del problema.
 
 ---
 
 ## Por qué este proyecto específico
 
-La vacante dice "Pagos Digitales TI". Los pagos digitales en Bancolombia no son solo transferencias entre personas. Incluyen:
+Los pagos digitales en Bancolombia no son solo transferencias entre personas. Incluyen:
 
 - Pagos entre clientes del banco (P2P, QR).
 - Pagos de clientes hacia comercios y servicios (PSE, débito automático).
@@ -16,7 +16,7 @@ La vacante dice "Pagos Digitales TI". Los pagos digitales en Bancolombia no son 
 - Pagos internos entre áreas del banco (tesorería, centros de costo).
 - Pagos programados y recurrentes de clientes.
 
-Este proyecto cubre todos esos flujos. Cuando el entrevistador pregunte "¿qué proyectos tienes?", puedes mostrar algo que habla exactamente el idioma del rol.
+Este proyecto cubre todos esos flujos.
 
 ---
 
@@ -32,7 +32,7 @@ Este proyecto cubre todos esos flujos. Cuando el entrevistador pregunte "¿qué 
 
 ---
 
-## Stack tecnológico (alineado con la vacante)
+## Stack tecnológico
 
 ```
 Backend
@@ -40,7 +40,11 @@ Backend
 ├── Spring Security (JWT + Roles)
 ├── R2DBC + PostgreSQL (acceso reactivo a BD)
 ├── Spring Boot Actuator (métricas, health)
-└── Resilience4j (Circuit Breaker, Retry)
+├── Resilience4j (Circuit Breaker, Retry)
+├── MapStruct (mapeo DTO ↔ Domain)
+├── Flyway (migraciones versionadas)
+├── Helpers antinulos (TextHelper, ObjectHelper)
+└── Springdoc OpenAPI (documentación API)
 
 Frontend
 ├── Angular 17+ ← Requisito explícito
@@ -71,15 +75,27 @@ Documentación
 
 ## Modelo de Dominio — Entidades Centrales
 
-```
-PERSONA (abstracta)
-    ├── CLIENTE (número de cliente, fecha vinculación)
-    └── EMPLEADO (cargo, área, centro_costo, tipo_contrato)
+### Value Objects (inmutables, autovalidables en compact constructor)
 
-CUENTA (pertenece a una Persona)
-    ├── tipo: CORRIENTE | AHORROS | NOMINA | TESORERIA | PROVEEDOR
-    ├── moneda: COP | USD | EUR
-    └── estado: ACTIVA | INACTIVA | BLOQUEADA | EMBARGADA
+```
+Email              → valida formato, normaliza lowercase, max 100 chars
+DocumentNumber     → DocumentType + value, valida no vacío, max 30 chars
+AccountNumber      → valida no vacío
+Money              → BigDecimal amount + Currency, add/subtract con currency check
+```
+
+### Entidades de Dominio (con VOs en vez de tipos primitivos)
+
+```
+PersonDomain (abstract)
+    ├── ClientDomain (clientNumber, membershipDate)
+    └── EmployeeDomain (position, area, costCenter, contractType)
+
+AccountDomain (belongs to a Person)
+    ├── AccountNumber number (VO)
+    ├── AccountType type: SAVINGS | CHECKING | PAYROLL | TREASURY | VENDOR
+    ├── Money balance (VO, amount + currency)
+    └── AccountStatus status: ACTIVE | INACTIVE | BLOCKED | FROZEN
 
 PAGO (evento transaccional — el corazón del sistema)
     ├── id: UUID
@@ -281,14 +297,17 @@ ROL_ADMIN
 **Funcionalidades:**
 - CRUD de personas (clientes y empleados).
 - Apertura y cierre de cuentas por tipo.
-- Consulta de saldo en tiempo real (reactivo, streaming si el usuario está conectado).
-- Bloqueo/desbloqueo de cuentas.
+- Consulta de saldo en tiempo real (reactivo, streaming SSE si está conectado).
+- Bloqueo/desbloqueo/cierre de cuentas mediante métodos de dominio (`block()`, `unblock()`, `close()`).
 
 **Lo que demuestra:**
-- Clean Architecture con entidades de dominio.
-- WebFlux con Flux para streaming de saldo (el saldo se actualiza en tiempo real).
+- Clean Architecture con entidades de dominio + Value Objects (`Email`, `DocumentNumber`, `AccountNumber`, `Money`).
+- Validación en 3 niveles: Jakarta (infra) → VOs (dominio) → DomainRules (app).
+- Manejo de errores por módulo (`AccountError`, `PersonError`) con mensajes en español.
+- Excepciones con Layer enum (`Layer.DOMAIN`) + patrón `create()`.
+- WebFlux con Flux para streaming de saldo (SSE en tiempo real).
 - Spring Security con roles.
-- Angular con guards por rol (el cliente no puede ver la pantalla de RRHH).
+- Angular con guards por rol.
 
 **Endpoints backend:**
 ```
@@ -297,12 +316,12 @@ GET    /api/v1/personas/{id}
 POST   /api/v1/cuentas
 GET    /api/v1/cuentas/{id}/saldo         ← Mono<BigDecimal>
 GET    /api/v1/cuentas/{id}/saldo/stream  ← Flux<SaldoEvent> (SSE)
-GET    /api/v1/clientes/{id}/cuentas      ← Flux<CuentaDTO>
+GET    /api/v1/clientes/{id}/cuentas      ← Flux<AccountDTO>
 PATCH  /api/v1/cuentas/{id}/estado
 ```
 
 **Pantallas Angular:**
-- `CuentasDashboardComponent`: lista de cuentas del cliente con saldos actualizados.
+- `CuentasDashboardComponent`: lista de cuentas con saldos actualizados via SSE.
 - `DetalleCuentaComponent`: historial de movimientos paginado.
 - `AdminCuentasComponent`: panel de administración para ROL_ADMIN.
 
@@ -1018,80 +1037,65 @@ cd frontend && ng serve
 
 ---
 
-## Estructura de Carpetas Completa
+## Estructura completa del proyecto
 
 ```
 bancopago/
 ├── backend/
-│   ├── src/main/java/com/bancolombia/bancopago/
-│   │   ├── domain/
-│   │   │   ├── model/
-│   │   │   │   ├── Pago.java
-│   │   │   │   ├── Cuenta.java
-│   │   │   │   ├── Persona.java
-│   │   │   │   ├── LoteNomina.java
-│   │   │   │   ├── Proveedor.java
-│   │   │   │   ├── PagoRecurrente.java
-│   │   │   │   └── enums/
-│   │   │   │       ├── TipoPago.java
-│   │   │   │       ├── EstadoPago.java
-│   │   │   │       └── TipoNomina.java
-│   │   │   ├── exceptions/
-│   │   │   │   ├── SaldoInsuficienteException.java
-│   │   │   │   ├── CuentaNoEncontradaException.java
-│   │   │   │   ├── CuentaBloqueadaException.java
-│   │   │   │   ├── LimiteExcedidoException.java
-│   │   │   │   └── PagoYaExistenteException.java
-│   │   │   └── gateways/
-│   │   │       ├── PagoRepository.java
-│   │   │       ├── CuentaRepository.java
-│   │   │       ├── LoteNominaRepository.java
-│   │   │       └── ProveedorRepository.java
-│   │   ├── usecase/
-│   │   │   ├── transferencia/
-│   │   │   │   ├── EjecutarTransferenciaUseCase.java
-│   │   │   │   └── RevertirTransferenciaUseCase.java
-│   │   │   ├── nomina/
-│   │   │   │   ├── CrearLoteNominaUseCase.java
-│   │   │   │   ├── AprobarLoteUseCase.java
-│   │   │   │   └── ProcesarLoteUseCase.java
-│   │   │   ├── proveedor/
-│   │   │   │   └── ProcesarPagoProveedorUseCase.java
-│   │   │   └── recurrente/
-│   │   │       └── EjecutarPagosRecurrentesUseCase.java
-│   │   └── infrastructure/
-│   │       ├── entrypoints/
-│   │       │   └── api/
-│   │       │       ├── TransferenciaController.java
-│   │       │       ├── NominaController.java
-│   │       │       ├── ProveedorController.java
-│   │       │       ├── QrController.java
-│   │       │       ├── PseController.java
-│   │       │       ├── WebhookController.java
-│   │       │       └── dto/
-│   │       ├── drivenadapters/
-│   │       │   ├── r2dbc/
-│   │       │   │   ├── PagoR2dbcRepository.java
-│   │       │   │   └── CuentaR2dbcRepository.java
-│   │       │   ├── redis/
-│   │       │   │   └── IdempotencyRedisAdapter.java
-│   │       │   └── external/
-│   │       │       └── PseHttpClient.java
-│   │       └── config/
-│   │           ├── SecurityConfig.java
-│   │           ├── RedisConfig.java
-│   │           └── Resilience4jConfig.java
-│   └── src/test/java/
-│       ├── unit/
-│       │   ├── EjecutarTransferenciaUseCaseTest.java
-│       │   ├── ProcesarLoteNominaUseCaseTest.java
-│       │   └── ...
-│       ├── integration/
-│       │   ├── TransferenciaControllerIT.java
-│       │   └── NominaControllerIT.java
-│       └── contract/ (Karate)
-│           ├── transferencias.feature
-│           └── nomina.feature
+│   └── src/main/java/com/bancopago/backend/
+│       ├── crosscutting/                      # Infraestructura compartida
+│       │   ├── exception/
+│       │   │   ├── ErrorCode.java             # Interfaz: getCode(), getMessageTemplate()
+│       │   │   ├── Layer.java                 # Enum: DOMAIN, APPLICATION, INFRASTRUCTURE
+│       │   │   └── DomainException.java       # Excepción base abstracta
+│       │   └── helpers/
+│       │       ├── TextHelper.java            # applyTrim(), isBlank(), truncate()
+│       │       └── ObjectHelper.java          # getDefault(), requireNonNull()
+│       │
+│       ├── domain/                            # Lógica de negocio pura
+│       │   ├── account/
+│       │   │   ├── AccountError.java          # Códigos de error en español
+│       │   │   ├── AccountDomain.java         # Entidad con AccountNumber + Money VOs
+│       │   │   ├── vo/
+│       │   │   │   ├── AccountNumber.java     # Value Object (record)
+│       │   │   │   └── Money.java             # Value Object con add/subtract
+│       │   │   └── exceptions/
+│       │   ├── person/
+│       │   │   ├── PersonError.java           # Códigos de error en español
+│       │   │   ├── PersonDomain.java          # Entidad abstracta
+│       │   │   ├── ClientDomain.java
+│       │   │   ├── EmployeeDomain.java
+│       │   │   ├── vo/
+│       │   │   │   ├── Email.java             # Value Object (record, valida formato)
+│       │   │   │   └── DocumentNumber.java    # Value Object (record)
+│       │   │   └── exceptions/
+│       │   ├── enums/                         # AccountStatus, AccountType, Currency, etc.
+│       │   ├── BaseDomain.java                # Clase base UUID
+│       │   └── DomainRule.java                # @FunctionalInterface
+│       │
+│       ├── application/                       # Casos de uso y puertos
+│       │   ├── primaryports/
+│       │   │   ├── dto/{module}/
+│       │   │   │   ├── request/               # Anotaciones Jakarta Validation
+│       │   │   │   └── response/              # con fromDomain()
+│       │   │   ├── interactor/{module}/       # Interfaces de puerto de entrada
+│       │   │   └── mapper/{module}/           # MapStruct DTO ↔ Domain
+│       │   ├── secondaryports/
+│       │   │   ├── entity/{module}/           # Entidades R2DBC @Table (columnas español)
+│       │   │   ├── repository/                # Interfaces de repositorio reactivas
+│       │   │   └── mapper/{module}/           # Mapeo manual Entity ↔ Domain
+│       │   └── usecase/{module}/
+│       │       ├── {UseCase}.java
+│       │       ├── impl/
+│       │       └── rulesvalidator/
+│       │
+│       └── infrastructure/
+│           ├── primaryadapters/
+│           │   ├── controller/{module}/       # Controladores REST con @Valid
+│           │   └── adapter/response/          # Wrapper GenericResponse
+│           ├── secondaryadapters/
+│           │   └── config/                    # Beans, seguridad, WebClient
+│           └── GlobalExceptionHandler.java
 │
 ├── frontend/
 │   └── src/app/
@@ -1101,155 +1105,238 @@ bancopago/
 │       │   │   ├── auth.guard.ts
 │       │   │   └── jwt.interceptor.ts
 │       │   └── services/
-│       │       └── idempotency.service.ts  ← Genera UUID por operación
+│       │       └── idempotency.service.ts     # Genera UUID por operación
 │       ├── shared/
 │       │   ├── components/
 │       │   │   ├── loading-spinner/
 │       │   │   ├── error-banner/
-│       │   │   └── monto-input/            ← Input con formato COP
+│       │   │   └── amount-input/             # Input formateado COP
 │       │   └── pipes/
 │       │       └── cop-currency.pipe.ts
 │       ├── features/
-│       │   ├── transferencias/
-│       │   ├── nomina/
-│       │   ├── proveedores/
+│       │   ├── transfers/
+│       │   ├── payroll/
+│       │   ├── vendors/
 │       │   ├── qr/
-│       │   ├── recurrentes/
-│       │   └── auditoria/
+│       │   ├── recurring/
+│       │   └── audit/
 │       └── portals/
-│           ├── cliente/
-│           │   └── (rutas del portal cliente)
-│           └── operativo/
-│               └── (rutas del portal operativo)
+│           ├── customer/                     # Rutas portal cliente
+│           └── operations/                   # Rutas portal operativo
 │
 ├── e2e/ (Playwright)
-│   ├── transferencias.spec.ts
-│   ├── nomina.spec.ts
+│   ├── transfers.spec.ts
+│   ├── payroll.spec.ts
 │   └── login.spec.ts
 │
-├── karate/ (Contract tests)
+├── karate/ (Pruebas de contrato)
 │   └── src/test/java/karate/
-│       ├── transferencias.feature
-│       └── nomina.feature
+│       ├── transfers.feature
+│       └── payroll.feature
 │
 ├── jmeter/
-│   ├── plan_transferencias_carga.jmx
-│   └── plan_nomina_masiva.jmx
+│   ├── transfers_load_plan.jmx
+│   └── payroll_batch_plan.jmx
 │
 ├── docs/
+│   ├── ARCHITECTURE.md                        # Documentación completa de arquitectura (ES)
+│   ├── ARCHITECTURE_DECISIONS.md              # Decisiones de arquitectura (EN)
+│   ├── IMPLEMENTATION_GUIDE.md                # Guía paso a paso (ES)
+│   ├── ISSUE_TEMPLATE.md                      # Plantilla de issue reutilizable
+│   ├── ROADMAP.md                             # Seguimiento de módulos y tareas
 │   ├── openapi.yml
-│   ├── diagrama-er.png
-│   ├── diagrama-secuencia-transferencia.png
-│   ├── diagrama-componentes.png
-│   └── decisiones-arquitectura.md
+│   ├── er-diagram.png
+│   ├── sequence-diagram-transfer.png
+│   └── component-diagram.png
 │
 └── docker-compose.yml
 ```
 
 ---
 
-## Implementación de referencia — Los fragmentos más importantes
+## Implementación de referencia — Fragmentos clave
 
-### Procesamiento reactivo de nómina masiva
+### Entidad de Dominio con Value Objects
+
+```java
+// AccountDomain usa VOs en vez de tipos primitivos
+public class AccountDomain extends BaseDomain {
+
+    private final UUID ownerId;
+    private final AccountNumber number;       // VO: valida no vacío
+    private final AccountType type;
+    private Money balance;                    // VO: amount + currency, operaciones inmutables
+
+    public AccountDomain(UUID id, UUID ownerId, AccountNumber number, AccountType type,
+                         Money balance, AccountStatus status) {
+        super(id);
+        this.ownerId = ObjectHelper.requireNonNull(ownerId, () ->
+            InvalidAccountException.create(AccountError.OWNER_REQUIRED));
+        this.number = ObjectHelper.requireNonNull(number, () ->
+            InvalidAccountException.create(AccountError.NUMBER_EMPTY));
+        this.type = ObjectHelper.requireNonNull(type, () ->
+            InvalidAccountException.create(AccountError.TYPE_REQUIRED));
+        this.balance = ObjectHelper.getDefault(balance, Money::zero);
+        this.status = ObjectHelper.getDefault(status, AccountStatus.ACTIVE);
+    }
+
+    public void deposit(BigDecimal amount) {
+        ensureOperable();
+        validatePositiveAmount(amount);
+        this.balance = this.balance.add(new Money(amount, this.balance.currency()));
+        // Money.add() valida moneda y retorna nuevo Money inmutable
+    }
+
+    public void block() {
+        if (this.status != AccountStatus.ACTIVE)
+            throw InvalidAccountStateException.create(getId(), this.status, "block");
+        this.status = AccountStatus.BLOCKED;
+    }
+}
+```
+
+### Value Object (Record autovalidable)
+
+```java
+public record Money(BigDecimal amount, Currency currency) {
+
+    public Money {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0)
+            throw InvalidAmountException.create(amount);
+        currency = ObjectHelper.getDefault(currency, Currency.COP);
+    }
+
+    public static Money zero() {
+        return new Money(BigDecimal.ZERO, Currency.COP);
+    }
+
+    public Money add(Money other) {
+        if (!this.currency.equals(other.currency))
+            throw InvalidAccountException.create(
+                AccountError.CURRENCY_MISMATCH, this.currency, other.currency);
+        return new Money(this.amount.add(other.amount), this.currency);
+    }
+}
+```
+
+### Manejo de Errores por Módulo (Mensajes en Español)
+
+```java
+// domain/account/AccountError.java
+public enum AccountError implements ErrorCode {
+    NUMBER_EMPTY("El número de cuenta no puede estar vacío"),
+    INSUFFICIENT_BALANCE("Saldo insuficiente: actual=%s, requerido=%s"),
+    BLOCKED("La cuenta %s se encuentra bloqueada"),
+    INVALID_STATE("No se puede ejecutar '%s' en la cuenta %s con estado %s");
+
+    @Override public String getCode() { return "ACCOUNT_" + name(); }
+    @Override public String getMessageTemplate() { return messageTemplate; }
+}
+
+// Excepción con patrón create()
+public class AccountBlockedException extends DomainException {
+    private static final long serialVersionUID = 1L;
+    private AccountBlockedException(UUID accountId) {
+        super(AccountError.BLOCKED, Layer.DOMAIN, accountId);
+    }
+    public static AccountBlockedException create(UUID accountId) {
+        return new AccountBlockedException(accountId);
+    }
+}
+```
+
+### Procesamiento Batch Reactivo (Nómina)
 
 ```java
 @Service
-public class ProcesarLoteNominaUseCase {
+public class ProcessPayrollUseCaseImpl implements ProcessPayrollUseCase {
 
-    private static final int CONCURRENCIA = 50;
+    private static final int CONCURRENCY = 50;
 
-    public Flux<ResultadoPagoEmpleado> procesar(String loteId, ServerSentEventSink<ProgresoEvent> sink) {
-        return loteNominaRepository.findById(loteId)
-            .flatMapMany(lote -> empleadoRepository.findByLoteId(loteId))
-            .flatMap(empleado -> procesarPagoEmpleado(empleado)
-                .onErrorResume(ex -> Mono.just(ResultadoPagoEmpleado.fallido(empleado, ex)))
-                , CONCURRENCIA) // 50 pagos simultáneos sin bloquear
-            .doOnNext(resultado -> {
-                // Emitir progreso via Server-Sent Events al frontend Angular
-                sink.next(new ProgresoEvent(resultado));
-            })
-            .doOnComplete(() -> {
-                actualizarEstadoLote(loteId, EstadoLote.COMPLETADO).subscribe();
-                sink.complete();
-            })
-            .doOnError(ex -> {
-                actualizarEstadoLote(loteId, EstadoLote.FALLIDO).subscribe();
-                sink.error(ex);
-            });
+    public Flux<EmployeePaymentResult> process(String batchId,
+                                                FluxSink<ProgressEvent> sink) {
+        return payrollBatchRepository.findById(batchId)
+            .flatMapMany(batch -> employeeRepository.findByBatchId(batchId))
+            .flatMap(employee -> processEmployeePayment(employee)
+                .onErrorResume(ex ->
+                    Mono.just(EmployeePaymentResult.failed(employee, ex))),
+                CONCURRENCY)  // 50 pagos concurrentes, no bloqueante
+            .doOnNext(result -> sink.next(new ProgressEvent(result)))
+            .doOnComplete(() -> updateBatchStatus(batchId, BatchStatus.COMPLETED))
+            .doOnError(ex -> updateBatchStatus(batchId, BatchStatus.FAILED));
     }
 
-    private Mono<ResultadoPagoEmpleado> procesarPagoEmpleado(EmpleadoConPago empleado) {
-        return cuentaRepository.findByIdForUpdate(empleado.getCuentaOrigenId())
-            .flatMap(cuentaOrigen -> {
-                if (cuentaOrigen.getSaldo().compareTo(empleado.getMontoNeto()) < 0) {
-                    return Mono.error(new SaldoInsuficienteException(empleado.getId()));
+    private Mono<EmployeePaymentResult> processEmployeePayment(EmployeePayment employee) {
+        return accountRepository.findByIdForUpdate(employee.getOriginAccountId())
+            .flatMap(origin -> {
+                if (origin.getBalance().compareTo(employee.getNetAmount()) < 0) {
+                    return Mono.error(new InsufficientBalanceException(employee.getId()));
                 }
                 return Mono.zip(
-                    cuentaRepository.debitarSaldo(cuentaOrigen.getId(), empleado.getMontoNeto()),
-                    cuentaRepository.acreditarSaldo(empleado.getCuentaDestinoId(), empleado.getMontoNeto()),
-                    pagoRepository.save(Pago.completado(empleado))
-                ).thenReturn(ResultadoPagoEmpleado.exitoso(empleado));
+                    accountRepository.debit(origin.getId(), employee.getNetAmount()),
+                    accountRepository.credit(employee.getDestAccountId(), employee.getNetAmount()),
+                    paymentRepository.save(Payment.completed(employee))
+                ).thenReturn(EmployeePaymentResult.success(employee));
             });
     }
 }
 ```
 
-### Angular — Dashboard de progreso de nómina en tiempo real
+### Angular — Dashboard de Progreso de Nómina en Tiempo Real
 
 ```typescript
 @Component({
-  selector: 'app-progreso-nomina',
+  selector: 'app-payroll-progress',
   template: `
-    <div class="progreso-container">
+    <div class="progress-container">
       <mat-progress-bar
-        [value]="progreso$ | async"
+        [value]="progress$ | async"
         mode="determinate">
       </mat-progress-bar>
-      <p>{{ mensajeProgreso$ | async }}</p>
+      <p>{{ message$ | async }}</p>
 
-      <div *ngIf="resultado$ | async as resultado" class="resultado">
-        <span class="exitosos">✓ {{ resultado.exitosos }} pagos completados</span>
-        <span class="fallidos" *ngIf="resultado.fallidos > 0">
-          ✗ {{ resultado.fallidos }} pagos fallidos
-          <button (click)="reprocesarFallidos()">Reintentar</button>
+      <div *ngIf="result$ | async as result" class="result">
+        <span class="success">✓ {{ result.successful }} payments completed</span>
+        <span class="failed" *ngIf="result.failed > 0">
+          ✗ {{ result.failed }} payments failed
+          <button (click)="retryFailed()">Retry</button>
         </span>
       </div>
     </div>
   `
 })
-export class ProgresoNominaComponent implements OnInit, OnDestroy {
+export class PayrollProgressComponent implements OnInit, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
 
-  progreso$!: Observable<number>;
-  mensajeProgreso$!: Observable<string>;
-  resultado$!: Observable<ResultadoLote>;
+  progress$!: Observable<number>;
+  message$!: Observable<string>;
+  result$!: Observable<BatchResult>;
 
   constructor(
-    private readonly nominaService: NominaService,
+    private readonly payrollService: PayrollService,
     private readonly route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    const loteId = this.route.snapshot.paramMap.get('id')!;
+    const batchId = this.route.snapshot.paramMap.get('id')!;
 
-    // Conectar al Server-Sent Events del backend
-    const eventos$: Observable<ProgresoEvent> = this.nominaService
-      .streamProgreso(loteId)
+    const events$: Observable<ProgressEvent> = this.payrollService
+      .streamProgress(batchId)
       .pipe(takeUntil(this.destroy$));
 
-    this.progreso$ = eventos$.pipe(
-      map(e => (e.procesados / e.total) * 100),
+    this.progress$ = events$.pipe(
+      map(e => (e.processed / e.total) * 100),
       startWith(0)
     );
 
-    this.mensajeProgreso$ = eventos$.pipe(
-      map(e => `Procesando ${e.procesados} de ${e.total} empleados...`)
+    this.message$ = events$.pipe(
+      map(e => `Processing ${e.processed} of ${e.total} employees...`)
     );
 
-    this.resultado$ = eventos$.pipe(
-      filter(e => e.completado),
-      map(e => e.resultado!)
+    this.result$ = events$.pipe(
+      filter(e => e.completed),
+      map(e => e.result!)
     );
   }
 
@@ -1257,24 +1344,21 @@ export class ProgresoNominaComponent implements OnInit, OnDestroy {
 }
 ```
 
-### Idempotency Service en Angular
+### Servicio de Idempotencia (Angular)
 
 ```typescript
-// Servicio que garantiza que cada operación tenga su UUID único
-// El backend rechaza la segunda llamada con el mismo UUID
+// Servicio que garantiza que cada operación tenga su UUID único.
+// El backend rechaza la segunda llamada con el mismo UUID.
 
 @Injectable({ providedIn: 'root' })
 export class IdempotencyService {
 
-  // Genera un nuevo key para cada operación
   generateKey(): string {
     return crypto.randomUUID();
   }
 
-  // Para operaciones de "una sola oportunidad" que el usuario puede reintentar
-  // El mismo key se usa si el usuario reintenta (para ser idempotente)
-  // Un key diferente si es una operación nueva
-  createTransferenciaHeaders(isRetry: boolean, existingKey?: string): HttpHeaders {
+  // Para operaciones reintentables: mismo key si es retry, nuevo key si es operación fresca
+  createTransferHeaders(isRetry: boolean, existingKey?: string): HttpHeaders {
     const key = isRetry && existingKey ? existingKey : this.generateKey();
     return new HttpHeaders({ 'Idempotency-Key': key });
   }
@@ -1298,7 +1382,7 @@ public class PseIntegrationService {
             .bodyToMono(PseResponse.class);
     }
 
-    // Cuando PSE no responde: guardar en cola para reprocesar
+    // Fallback cuando PSE no responde: encola para reprocesar
     public Mono<PseResponse> pseFallback(PseRequest request, Exception ex) {
         log.warn("PSE no disponible, encolando pago {}: {}", request.getReferencia(), ex.getMessage());
         return colaPse.encolar(request)
@@ -1311,7 +1395,7 @@ public class PseIntegrationService {
 
 ## Métricas que deberías poder mostrar al final
 
-Al terminar el proyecto, deberías poder decir en la entrevista:
+Al terminar el proyecto:
 
 - "El sistema procesa nóminas de 5.000 empleados en menos de 8 segundos con concurrencia 50."
 - "La API de transferencias maneja 150 TPS con latencia p99 < 800ms según JMeter."
@@ -1324,4 +1408,4 @@ Esas son afirmaciones concretas que demuestran criterio de ingeniería, no solo 
 
 ---
 
-*BancoPago es el proyecto que conecta todos los puntos: reactive backend, Angular frontend, testing completo y dominio de pagos. Construirlo es prepararte para el trabajo real que harás si entras a Bancolombia.*
+*BancoPago es el proyecto que conecta todos los puntos: reactive backend, Angular frontend, testing completo y dominio de pagos. Construirlo es preparación para el trabajo real.*
