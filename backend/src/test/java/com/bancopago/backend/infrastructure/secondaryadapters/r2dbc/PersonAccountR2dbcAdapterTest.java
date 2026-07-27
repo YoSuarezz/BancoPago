@@ -47,8 +47,8 @@ class PersonAccountR2dbcAdapterTest {
         );
 
         StepVerifier.create(
-                        personRepository.save(client)
-                                .flatMap(saved -> personRepository.findById(saved.getId()))
+                        personRepository.savePerson(client)
+                                .flatMap(saved -> personRepository.findPersonById(saved.getId()))
                 )
                 .assertNext(found -> {
                     assertEquals(client.getId(), found.getId());
@@ -60,11 +60,11 @@ class PersonAccountR2dbcAdapterTest {
                 })
                 .verifyComplete();
 
-        StepVerifier.create(personRepository.findByDocument("100200300", "CC"))
+        StepVerifier.create(personRepository.findPersonByDocument("100200300", "CC"))
                 .assertNext(found -> assertEquals("ana.gomez@example.com", found.getEmail()))
                 .verifyComplete();
 
-        StepVerifier.create(personRepository.existsByDocument("100200300"))
+        StepVerifier.create(personRepository.existsPersonByDocument("100200300"))
                 .expectNext(true)
                 .verifyComplete();
     }
@@ -84,7 +84,7 @@ class PersonAccountR2dbcAdapterTest {
         );
 
         StepVerifier.create(
-                        personRepository.save(employee)
+                        personRepository.savePerson(employee)
                                 .flatMap(saved -> {
                                     var updated = new EmployeeDomain(
                                             saved.getId(),
@@ -97,9 +97,9 @@ class PersonAccountR2dbcAdapterTest {
                                             "CC-01",
                                             "INDEFINITE"
                                     );
-                                    return personRepository.save(updated);
+                                    return personRepository.savePerson(updated);
                                 })
-                                .flatMap(saved -> personRepository.findById(saved.getId()))
+                                .flatMap(saved -> personRepository.findPersonById(saved.getId()))
                 )
                 .assertNext(found -> {
                     assertEquals("Carlos Ruiz Updated", found.getName());
@@ -120,21 +120,21 @@ class PersonAccountR2dbcAdapterTest {
         );
 
         StepVerifier.create(
-                        personRepository.save(client)
+                        personRepository.savePerson(client)
                                 .flatMap(savedPerson -> {
                                     var account = new AccountDomain(
                                             savedPerson.getId(),
                                             new AccountNumber("2000000001"),
                                             AccountType.SAVINGS
                                     );
-                                    return accountRepository.save(account)
+                                    return accountRepository.saveAccount(account)
                                             .flatMap(savedAccount -> {
                                                 savedAccount.deposit(new BigDecimal("150000.00"));
                                                 savedAccount.block();
-                                                return accountRepository.save(savedAccount);
+                                                return accountRepository.saveAccount(savedAccount);
                                             });
                                 })
-                                .flatMap(saved -> accountRepository.findByNumber("2000000001"))
+                                .flatMap(saved -> accountRepository.findAccountByNumber("2000000001"))
                 )
                 .assertNext(found -> {
                     assertEquals("2000000001", found.getNumber());
@@ -145,13 +145,13 @@ class PersonAccountR2dbcAdapterTest {
                 .verifyComplete();
 
         StepVerifier.create(
-                        personRepository.findByDocument("555666777", "CC")
-                                .flatMapMany(person -> accountRepository.findByOwnerId(person.getId()))
+                        personRepository.findPersonByDocument("555666777", "CC")
+                                .flatMapMany(person -> accountRepository.findAccountsByOwnerId(person.getId()))
                 )
                 .assertNext(account -> assertEquals("2000000001", account.getNumber()))
                 .verifyComplete();
 
-        StepVerifier.create(accountRepository.existsByNumber("2000000001"))
+        StepVerifier.create(accountRepository.existsAccountByNumber("2000000001"))
                 .expectNext(true)
                 .verifyComplete();
     }
@@ -159,13 +159,13 @@ class PersonAccountR2dbcAdapterTest {
     @Test
     @DisplayName("should return empty when person or account does not exist")
     void shouldReturnEmptyWhenNotFound() {
-        StepVerifier.create(personRepository.findById(UUID.randomUUID()))
+        StepVerifier.create(personRepository.findPersonById(UUID.randomUUID()))
                 .verifyComplete();
 
-        StepVerifier.create(accountRepository.findByNumber("9999999999"))
+        StepVerifier.create(accountRepository.findAccountByNumber("9999999999"))
                 .verifyComplete();
 
-        StepVerifier.create(personRepository.existsByDocument("does-not-exist"))
+        StepVerifier.create(personRepository.existsPersonByDocument("does-not-exist"))
                 .expectNext(false)
                 .verifyComplete();
     }

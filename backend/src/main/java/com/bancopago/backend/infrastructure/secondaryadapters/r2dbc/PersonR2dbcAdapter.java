@@ -12,44 +12,45 @@ import java.util.UUID;
 @Component
 public class PersonR2dbcAdapter implements PersonRepository {
 
-    private final PersonR2dbcRepository repository;
-    private final PersonEntityMapper mapper;
+    private final PersonR2dbcRepository personR2dbcRepository;
+    private final PersonEntityMapper personEntityMapper;
 
-    public PersonR2dbcAdapter(PersonR2dbcRepository repository, PersonEntityMapper mapper) {
-        this.repository = repository;
-        this.mapper = mapper;
+    public PersonR2dbcAdapter(PersonR2dbcRepository personR2dbcRepository,
+                              PersonEntityMapper personEntityMapper) {
+        this.personR2dbcRepository = personR2dbcRepository;
+        this.personEntityMapper = personEntityMapper;
     }
 
     @Override
-    public Mono<PersonDomain> save(PersonDomain person) {
-        return repository.findById(person.getId())
+    public Mono<PersonDomain> savePerson(PersonDomain person) {
+        return personR2dbcRepository.findById(person.getId())
                 .flatMap(existing -> {
-                    PersonEntity entity = mapper.toEntity(person);
+                    PersonEntity entity = personEntityMapper.toEntity(person);
                     entity.setCreatedAt(existing.getCreatedAt());
                     entity.markPersisted();
-                    return repository.save(entity);
+                    return personR2dbcRepository.save(entity);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                    PersonEntity entity = mapper.toEntity(person);
+                    PersonEntity entity = personEntityMapper.toEntity(person);
                     entity.markNew();
-                    return repository.save(entity);
+                    return personR2dbcRepository.save(entity);
                 }))
-                .map(mapper::toDomain);
+                .map(personEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<PersonDomain> findById(UUID id) {
-        return repository.findById(id).map(mapper::toDomain);
+    public Mono<PersonDomain> findPersonById(UUID personId) {
+        return personR2dbcRepository.findById(personId).map(personEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<PersonDomain> findByDocument(String document, String documentType) {
-        return repository.findByDocumentNumberAndDocumentType(document, documentType)
-                .map(mapper::toDomain);
+    public Mono<PersonDomain> findPersonByDocument(String documentNumber, String documentType) {
+        return personR2dbcRepository.findByDocumentNumberAndDocumentType(documentNumber, documentType)
+                .map(personEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<Boolean> existsByDocument(String document) {
-        return repository.existsByDocumentNumber(document);
+    public Mono<Boolean> existsPersonByDocument(String documentNumber) {
+        return personR2dbcRepository.existsByDocumentNumber(documentNumber);
     }
 }

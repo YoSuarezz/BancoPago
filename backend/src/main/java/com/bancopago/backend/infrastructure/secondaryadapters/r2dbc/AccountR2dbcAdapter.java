@@ -13,49 +13,51 @@ import java.util.UUID;
 @Component
 public class AccountR2dbcAdapter implements AccountRepository {
 
-    private final AccountR2dbcRepository repository;
-    private final AccountEntityMapper mapper;
+    private final AccountR2dbcRepository accountR2dbcRepository;
+    private final AccountEntityMapper accountEntityMapper;
 
-    public AccountR2dbcAdapter(AccountR2dbcRepository repository, AccountEntityMapper mapper) {
-        this.repository = repository;
-        this.mapper = mapper;
+    public AccountR2dbcAdapter(AccountR2dbcRepository accountR2dbcRepository,
+                               AccountEntityMapper accountEntityMapper) {
+        this.accountR2dbcRepository = accountR2dbcRepository;
+        this.accountEntityMapper = accountEntityMapper;
     }
 
     @Override
-    public Mono<AccountDomain> save(AccountDomain account) {
-        return repository.findById(account.getId())
+    public Mono<AccountDomain> saveAccount(AccountDomain account) {
+        return accountR2dbcRepository.findById(account.getId())
                 .flatMap(existing -> {
-                    AccountEntity entity = mapper.toEntity(account);
+                    AccountEntity entity = accountEntityMapper.toEntity(account);
                     entity.setCreatedAt(existing.getCreatedAt());
                     entity.setVersion(existing.getVersion());
                     entity.markPersisted();
-                    return repository.save(entity);
+                    return accountR2dbcRepository.save(entity);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                    AccountEntity entity = mapper.toEntity(account);
+                    AccountEntity entity = accountEntityMapper.toEntity(account);
                     entity.markNew();
-                    return repository.save(entity);
+                    return accountR2dbcRepository.save(entity);
                 }))
-                .map(mapper::toDomain);
+                .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<AccountDomain> findById(UUID id) {
-        return repository.findById(id).map(mapper::toDomain);
+    public Mono<AccountDomain> findAccountById(UUID accountId) {
+        return accountR2dbcRepository.findById(accountId).map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<AccountDomain> findByNumber(String number) {
-        return repository.findByAccountNumber(number).map(mapper::toDomain);
+    public Mono<AccountDomain> findAccountByNumber(String accountNumber) {
+        return accountR2dbcRepository.findByAccountNumber(accountNumber)
+                .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Flux<AccountDomain> findByOwnerId(UUID ownerId) {
-        return repository.findByPersonId(ownerId).map(mapper::toDomain);
+    public Flux<AccountDomain> findAccountsByOwnerId(UUID ownerId) {
+        return accountR2dbcRepository.findByPersonId(ownerId).map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<Boolean> existsByNumber(String number) {
-        return repository.existsByAccountNumber(number);
+    public Mono<Boolean> existsAccountByNumber(String accountNumber) {
+        return accountR2dbcRepository.existsByAccountNumber(accountNumber);
     }
 }

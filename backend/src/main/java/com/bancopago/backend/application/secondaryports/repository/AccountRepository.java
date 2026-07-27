@@ -7,9 +7,14 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface AccountRepository {
-    Mono<AccountDomain> save(AccountDomain account);
-    Mono<AccountDomain> findById(UUID id);
-    Mono<AccountDomain> findByNumber(String number);
-    Flux<AccountDomain> findByOwnerId(UUID ownerId);
-    Mono<Boolean> existsByNumber(String number);
+
+    Mono<AccountDomain> saveAccount(AccountDomain account);
+
+    Mono<AccountDomain> findAccountById(UUID accountId);
+
+    Mono<AccountDomain> findAccountByNumber(String accountNumber);
+
+    Flux<AccountDomain> findAccountsByOwnerId(UUID ownerId);
+
+    Mono<Boolean> existsAccountByNumber(String accountNumber);
 }

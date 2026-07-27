@@ -260,8 +260,8 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
     private final CreateAccountRulesValidator rulesValidator;
     private final AccountEntityMapper entityMapper;
 
-    public Mono<AccountResponse> execute(CreateAccountRequest request) {
-        return personRepository.findById(request.ownerId())
+    public Mono<AccountResponse> createAccount(CreateAccountRequest request) {
+        return personRepository.findPersonById(request.ownerId())
             .switchIfEmpty(Mono.error(new PersonNotFoundException(request.ownerId())))
             .flatMap(person -> {
                 var domain = new AccountDomain(
@@ -270,10 +270,9 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
                     request.type()
                 );
                 return rulesValidator.validate(domain)
-                    .then(accountRepository.save(entityMapper.toEntity(domain)))
-                    .map(entityMapper::toDomain);
-            })
-            .map(AccountResponse::fromDomain);
+                    .then(accountRepository.saveAccount(domain))
+                    .map(AccountResponse::fromDomain);
+            });
     }
 }
 ```
@@ -312,7 +311,9 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 | DTO Request | PascalCase + `Request` | `CreateAccountRequest` |
 | DTO Response | PascalCase + `Response` | `AccountResponse` |
 | Paquetes | minusculas.singular | `domain.account`, `application.service` |
-| Métodos | camelCase | `findById`, `execute`, `processPayment` |
+| Métodos de repositorio (puerto) | `verb` + `Entity` + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
+| Métodos de use case / interactor (API concreta) | `verb` + sujeto de negocio | `createAccount`, `getAccountBalance`, `blockAccount`, `changeAccountStatus` |
+| Métodos genéricos técnicos (`UseCase*` / `Interactor*`) | `execute` solo en interfaces genéricas | No exponer `execute` como API pública del use case concreto |
 | Constantes | UPPER_SNAKE_CASE | `MAX_CONCURRENCY`, `DEFAULT_CURRENCY` |
 
 ### 4.3 Estilo de Código
@@ -321,8 +322,9 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 - **Excepciones:** constructor privado + static `create()`.
 - **Entidades:** constructor por defecto antinull + factories estáticas `create()`.
 - **Helpers:** `TextHelper.applyTrim()`, `ObjectHelper.getDefault()`, `ObjectHelper.requireNonNull()`.
-- **MapStruct** solo para DTO↔Domain. Entity↔Domain siempre manual (español→inglés).
+- **MapStruct** solo para DTO↔Domain. Entity↔Domain siempre manual (VOs + herencia).
 - **Sin `if (x == null)`** — usar `TextHelper.isBlank()` o `ObjectHelper.requireNonNull()`.
+- **Nombres de métodos explícitos:** en puertos de repositorio y use cases concretos, el nombre debe decir *qué* se hace y *sobre qué* / *por qué criterio* (`saveAccount`, `findPersonByDocument`, `createAccount`). Evitar `save`, `findById` o `execute` ambiguos en la API pública.
 
 ---
 
@@ -356,8 +358,8 @@ class CreateAccountUseCaseTest {
 
     @Test
     void shouldCreateAccountWhenValid() {
-        when(personRepository.findById(any())).thenReturn(Mono.just(new PersonDomain(...)));
-        StepVerifier.create(useCase.execute(request))
+        when(personRepository.findPersonById(any())).thenReturn(Mono.just(client));
+        StepVerifier.create(useCase.createAccount(request))
             .assertNext(response -> assertEquals("001-123", response.number()))
             .verifyComplete();
     }
