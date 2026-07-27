@@ -3,6 +3,7 @@ package com.bancopago.backend.application.secondaryports.entity;
 import com.bancopago.backend.crosscutting.helpers.ObjectHelper;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
@@ -29,6 +30,9 @@ public class AccountEntity implements Persistable<UUID> {
     @Column("created_at")
     private LocalDateTime createdAt;
 
+    @Transient
+    private boolean newEntity = true;
+
     public AccountEntity() {
         setId(UUID.randomUUID());
         setNumero(TextHelper.EMPTY);
@@ -38,6 +42,7 @@ public class AccountEntity implements Persistable<UUID> {
         setEstado("ACTIVA");
         setVersion(0L);
         setCreatedAt(LocalDateTime.now());
+        this.newEntity = true;
     }
 
     public static AccountEntity create() { return new AccountEntity(); }
@@ -91,5 +96,9 @@ public class AccountEntity implements Persistable<UUID> {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = ObjectHelper.getDefault(createdAt, LocalDateTime.now()); }
 
     @Override
-    public boolean isNew() { return true; }
+    public boolean isNew() { return newEntity; }
+
+    public void markNew() { this.newEntity = true; }
+
+    public void markPersisted() { this.newEntity = false; }
 }

@@ -1,15 +1,14 @@
 package com.bancopago.backend.application.secondaryports.mapper;
 
+import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
 import com.bancopago.backend.domain.account.AccountDomain;
 import com.bancopago.backend.domain.account.vo.AccountNumber;
 import com.bancopago.backend.domain.account.vo.Money;
 import com.bancopago.backend.domain.enums.AccountStatus;
 import com.bancopago.backend.domain.enums.AccountType;
 import com.bancopago.backend.domain.enums.Currency;
-import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,8 +16,10 @@ import java.util.stream.Collectors;
 public class AccountEntityMapper {
 
     public AccountEntity toEntity(AccountDomain domain) {
-        if (domain == null) return null;
-        return AccountEntity.create(
+        if (domain == null) {
+            return null;
+        }
+        AccountEntity entity = AccountEntity.create(
                 domain.getId(),
                 domain.getOwnerId(),
                 domain.getNumber(),
@@ -26,12 +27,17 @@ public class AccountEntityMapper {
                 domain.getBalance(),
                 mapCurrency(domain.getCurrency()),
                 mapAccountStatus(domain.getStatus()),
-                0L, null
+                0L,
+                null
         );
+        entity.markNew();
+        return entity;
     }
 
     public AccountDomain toDomain(AccountEntity entity) {
-        if (entity == null) return null;
+        if (entity == null) {
+            return null;
+        }
         return new AccountDomain(
                 entity.getId(),
                 entity.getPersonaId(),
@@ -43,22 +49,44 @@ public class AccountEntityMapper {
     }
 
     public List<AccountEntity> toEntityCollection(List<AccountDomain> domainList) {
-        if (domainList == null) return List.of();
+        if (domainList == null) {
+            return List.of();
+        }
         return domainList.stream().map(this::toEntity).collect(Collectors.toList());
     }
 
     public List<AccountDomain> toDomainCollection(List<AccountEntity> entityList) {
-        if (entityList == null) return List.of();
+        if (entityList == null) {
+            return List.of();
+        }
         return entityList.stream().map(this::toDomain).collect(Collectors.toList());
     }
 
     private String mapAccountType(AccountType type) {
-        return type != null ? type.name() : null;
+        if (type == null) {
+            return null;
+        }
+        return switch (type) {
+            case CHECKING -> "CORRIENTE";
+            case SAVINGS -> "AHORROS";
+            case PAYROLL -> "NOMINA";
+            case TREASURY -> "TESORERIA";
+            case SUPPLIER -> "PROVEEDOR";
+        };
     }
 
     private AccountType mapAccountType(String value) {
-        if (value == null) return null;
-        try { return AccountType.valueOf(value.toUpperCase()); } catch (IllegalArgumentException e) { return null; }
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return switch (value.trim().toUpperCase()) {
+            case "CORRIENTE", "CHECKING" -> AccountType.CHECKING;
+            case "AHORROS", "SAVINGS" -> AccountType.SAVINGS;
+            case "NOMINA", "PAYROLL" -> AccountType.PAYROLL;
+            case "TESORERIA", "TREASURY" -> AccountType.TREASURY;
+            case "PROVEEDOR", "SUPPLIER" -> AccountType.SUPPLIER;
+            default -> null;
+        };
     }
 
     private String mapCurrency(Currency currency) {
@@ -66,16 +94,38 @@ public class AccountEntityMapper {
     }
 
     private Currency mapCurrency(String value) {
-        if (value == null) return null;
-        try { return Currency.valueOf(value.toUpperCase()); } catch (IllegalArgumentException e) { return null; }
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Currency.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private String mapAccountStatus(AccountStatus status) {
-        return status != null ? status.name() : null;
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case ACTIVE -> "ACTIVA";
+            case INACTIVE -> "INACTIVA";
+            case BLOCKED -> "BLOQUEADA";
+            case SEIZED -> "EMBARGADA";
+        };
     }
 
     private AccountStatus mapAccountStatus(String value) {
-        if (value == null) return null;
-        try { return AccountStatus.valueOf(value.toUpperCase()); } catch (IllegalArgumentException e) { return null; }
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return switch (value.trim().toUpperCase()) {
+            case "ACTIVA", "ACTIVE" -> AccountStatus.ACTIVE;
+            case "INACTIVA", "INACTIVE" -> AccountStatus.INACTIVE;
+            case "BLOQUEADA", "BLOCKED" -> AccountStatus.BLOCKED;
+            case "EMBARGADA", "SEIZED" -> AccountStatus.SEIZED;
+            default -> null;
+        };
     }
 }
