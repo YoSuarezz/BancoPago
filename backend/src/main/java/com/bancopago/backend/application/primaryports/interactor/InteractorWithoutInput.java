@@ -3,8 +3,7 @@ package com.bancopago.backend.application.primaryports.interactor;
 import reactor.core.publisher.Mono;
 
 /**
- * Generic technical contract for a primary-port interactor with no input.
- * Concrete interactors MUST use an explicit business method name (e.g. {@code listActiveAccounts}).
+ * Contrato genérico. Preferir método de negocio explícito en la interfaz concreta ({@code listActiveAccounts}).
  */
 @FunctionalInterface
 public interface InteractorWithoutInput<O> {

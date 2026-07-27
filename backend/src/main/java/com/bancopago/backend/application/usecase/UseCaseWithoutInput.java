@@ -3,10 +3,7 @@ package com.bancopago.backend.application.usecase;
 import reactor.core.publisher.Mono;
 
 /**
- * Generic technical contract for a use case with no input.
- * <p>
- * Concrete use case interfaces MUST declare an explicit business method
- * (e.g. {@code listActiveAccounts}) instead of exposing only {@code execute}.
+ * Contrato genérico. Preferir método de negocio explícito en la interfaz concreta ({@code listActiveAccounts}).
  */
 @FunctionalInterface
 public interface UseCaseWithoutInput<O> {

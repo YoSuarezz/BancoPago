@@ -15,11 +15,6 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Manual Entity ↔ Domain mapper.
- * Kept manual (not MapStruct) because domain reconstitution must build Value Objects
- * ({@link AccountNumber}, {@link Money}) and validate enum persistence values.
- */
 @Component
 public class AccountEntityMapper {
 

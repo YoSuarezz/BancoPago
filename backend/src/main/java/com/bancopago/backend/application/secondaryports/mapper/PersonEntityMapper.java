@@ -17,13 +17,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Manual Entity ↔ Domain mapper.
- * Kept manual (not MapStruct) because {@link PersonDomain} is abstract and must be
- * reconstituted as {@link ClientDomain} or {@link EmployeeDomain}, and because
- * persistence columns map to Value Objects ({@link DocumentNumber}, {@link Email}).
- * <p>
- * Subclass-only fields (clientNumber, position, etc.) are not stored in {@code person}
- * yet, so reconstitution uses safe defaults rather than inventing persisted values.
+ * Mapper manual: {@link PersonDomain} es abstracta (Client/Employee) y los campos de subclase
+ * aún no viven en la tabla {@code person}, por eso se reconstituyen con defaults seguros.
  */
 @Component
 public class PersonEntityMapper {

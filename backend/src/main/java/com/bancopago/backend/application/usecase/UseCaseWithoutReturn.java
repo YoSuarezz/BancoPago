@@ -3,10 +3,7 @@ package com.bancopago.backend.application.usecase;
 import reactor.core.publisher.Mono;
 
 /**
- * Generic technical contract for a use case with no return payload.
- * <p>
- * Concrete use case interfaces MUST declare an explicit business method
- * (e.g. {@code blockAccount}, {@code closeAccount}) instead of exposing only {@code execute}.
+ * Contrato genérico. Preferir método de negocio explícito en la interfaz concreta ({@code blockAccount}).
  */
 @FunctionalInterface
 public interface UseCaseWithoutReturn<I> {

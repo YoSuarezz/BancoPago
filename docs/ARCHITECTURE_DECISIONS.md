@@ -325,6 +325,7 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 - **MapStruct** solo para DTO↔Domain. Entity↔Domain siempre manual (VOs + herencia).
 - **Sin `if (x == null)`** — usar `TextHelper.isBlank()` o `ObjectHelper.requireNonNull()`.
 - **Nombres de métodos explícitos:** en puertos de repositorio y use cases concretos, el nombre debe decir *qué* se hace y *sobre qué* / *por qué criterio* (`saveAccount`, `findPersonByDocument`, `createAccount`). Evitar `save`, `findById` o `execute` ambiguos en la API pública.
+- **Comentarios:** solo cuando aportan el *porqué* (no narrar el código). En español.
 
 ---
 
