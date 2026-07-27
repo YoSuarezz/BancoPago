@@ -3,7 +3,7 @@ package com.bancopago.backend.crosscutting.exception;
 public abstract class DomainException extends RuntimeException {
     private final ErrorCode errorCode;
     private final Layer layer;
-    private final Object[] args;
+    private final transient Object[] args;
     private final String userMessage;
 
     protected DomainException(ErrorCode errorCode, Layer layer, Object... args) {

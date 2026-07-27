@@ -14,7 +14,6 @@ import com.bancopago.backend.domain.person.vo.Email;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Mapper manual: {@link PersonDomain} es abstracta (Client/Employee) y los campos de subclase
@@ -78,14 +77,14 @@ public class PersonEntityMapper {
         if (domainList == null) {
             return List.of();
         }
-        return domainList.stream().map(this::toEntity).collect(Collectors.toList());
+        return domainList.stream().map(this::toEntity).toList();
     }
 
     public List<PersonDomain> toDomainCollection(List<PersonEntity> entityList) {
         if (entityList == null) {
             return List.of();
         }
-        return entityList.stream().map(this::toDomain).collect(Collectors.toList());
+        return entityList.stream().map(this::toDomain).toList();
     }
 
     private String requireEnumName(Enum<?> value, PersonError error) {

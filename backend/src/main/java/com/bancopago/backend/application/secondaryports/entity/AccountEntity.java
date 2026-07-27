@@ -2,6 +2,8 @@ package com.bancopago.backend.application.secondaryports.entity;
 
 import com.bancopago.backend.crosscutting.helpers.ObjectHelper;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
+import com.bancopago.backend.domain.enums.AccountStatus;
+import com.bancopago.backend.domain.enums.Currency;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.annotation.Version;
@@ -40,8 +42,8 @@ public class AccountEntity implements Persistable<UUID> {
         setAccountNumber(TextHelper.EMPTY);
         setAccountType(TextHelper.EMPTY);
         setBalance(BigDecimal.ZERO);
-        setCurrency("COP");
-        setStatus("ACTIVE");
+        setCurrency(Currency.COP.name());
+        setStatus(AccountStatus.ACTIVE.name());
         setVersion(0L);
         setCreatedAt(LocalDateTime.now());
         this.newEntity = true;
@@ -69,7 +71,7 @@ public class AccountEntity implements Persistable<UUID> {
 
     public static AccountEntity create(UUID personId, String accountNumber, String accountType) {
         return create(UUID.randomUUID(), personId, accountNumber, accountType,
-                BigDecimal.ZERO, "COP", "ACTIVE", 0L, LocalDateTime.now());
+                BigDecimal.ZERO, Currency.COP.name(), AccountStatus.ACTIVE.name(), 0L, LocalDateTime.now());
     }
 
     public UUID getId() { return id; }

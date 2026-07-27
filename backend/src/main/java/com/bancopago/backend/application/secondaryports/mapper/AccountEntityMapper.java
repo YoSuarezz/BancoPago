@@ -13,8 +13,10 @@ import com.bancopago.backend.domain.enums.Currency;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Mapper manual: el dominio usa VOs y enums, mientras la persistencia almacena columnas planas.
+ */
 @Component
 public class AccountEntityMapper {
 
@@ -26,7 +28,7 @@ public class AccountEntityMapper {
                 domain.getId(),
                 domain.getOwnerId(),
                 domain.getNumber(),
-                requireEnumName(domain.getType(), AccountError.TYPE_REQUIRED),
+                requireEnumName(domain.getType()),
                 domain.getBalance(),
                 domain.getCurrency() != null ? domain.getCurrency().name() : Currency.COP.name(),
                 domain.getStatus() != null ? domain.getStatus().name() : AccountStatus.ACTIVE.name(),
@@ -55,19 +57,19 @@ public class AccountEntityMapper {
         if (domainList == null) {
             return List.of();
         }
-        return domainList.stream().map(this::toEntity).collect(Collectors.toList());
+        return domainList.stream().map(this::toEntity).toList();
     }
 
     public List<AccountDomain> toDomainCollection(List<AccountEntity> entityList) {
         if (entityList == null) {
             return List.of();
         }
-        return entityList.stream().map(this::toDomain).collect(Collectors.toList());
+        return entityList.stream().map(this::toDomain).toList();
     }
 
-    private String requireEnumName(Enum<?> value, AccountError error) {
+    private String requireEnumName(Enum<?> value) {
         if (value == null) {
-            throw InvalidAccountException.create(error);
+            throw InvalidAccountException.create(AccountError.TYPE_REQUIRED);
         }
         return value.name();
     }
