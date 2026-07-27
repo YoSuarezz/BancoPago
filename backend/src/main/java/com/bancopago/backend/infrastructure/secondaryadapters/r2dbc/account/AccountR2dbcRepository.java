@@ -1,4 +1,4 @@
-package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc;
+package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.account;
 
 import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;

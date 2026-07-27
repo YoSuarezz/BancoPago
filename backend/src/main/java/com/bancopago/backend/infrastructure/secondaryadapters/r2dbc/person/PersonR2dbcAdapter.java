@@ -1,4 +1,4 @@
-package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc;
+package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.person;
 
 import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
 import com.bancopago.backend.application.secondaryports.mapper.PersonEntityMapper;
