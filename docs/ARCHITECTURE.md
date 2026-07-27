@@ -232,14 +232,14 @@ bancopago/
 
 **Contrato reactivo:**
 ```java
-// Las interfaces de Use Case retornan tipos reactivos
+// Las interfaces de Use Case retornan tipos reactivos y usan métodos de negocio explícitos
 public interface CreateAccountUseCase {
-    Mono<AccountResponse> execute(CreateAccountRequest request);
+    Mono<AccountResponse> createAccount(CreateAccountRequest request);
 }
 
 public interface GetAccountBalanceUseCase {
-    Mono<BigDecimal> execute(UUID accountId);
-    Flux<BalanceEvent> stream(UUID accountId);  // SSE
+    Mono<BigDecimal> getAccountBalance(UUID accountId);
+    Flux<BalanceEvent> streamAccountBalance(UUID accountId);  // SSE
 }
 ```
 
@@ -585,12 +585,12 @@ public class CreateAccountService implements CreateAccountUseCase {
     }
 
     @Override
-    public Mono<AccountResponse> execute(CreateAccountRequest request) {
-        return personRepository.findById(request.ownerId())
+    public Mono<AccountResponse> createAccount(CreateAccountRequest request) {
+        return personRepository.findPersonById(request.ownerId())
             .switchIfEmpty(Mono.error(new PersonNotFoundException(request.ownerId())))
             .flatMap(person -> {
                 var account = new Account(request.ownerId(), request.number(), request.type());
-                return accountRepository.save(account);
+                return accountRepository.saveAccount(account);
             })
             .map(AccountResponse::from);
     }
@@ -637,13 +637,13 @@ public class AccountController {
 
     @PostMapping
     public Mono<ResponseEntity<AccountResponse>> create(@RequestBody @Valid CreateAccountRequest request) {
-        return createAccount.execute(request)
+        return createAccount.createAccount(request)
             .map(response -> ResponseEntity.status(HttpStatus.CREATED).body(response));
     }
 
     @GetMapping("/{id}/balance/stream")
     public Flux<ServerSentEvent<BalanceEvent>> streamBalance(@PathVariable UUID id) {
-        return getBalance.stream(id)
+        return getBalance.streamAccountBalance(id)
             .map(event -> ServerSentEvent.builder(event).build());
     }
 }
@@ -653,11 +653,11 @@ public class AccountController {
 
 ```java
 public interface AccountRepository {
-    Mono<Account> save(Account account);
-    Mono<Account> findById(UUID id);
-    Mono<Account> findByNumber(String number);
-    Flux<Account> findByOwnerId(UUID ownerId);
-    Mono<Boolean> existsByNumber(String number);
+    Mono<Account> saveAccount(Account account);
+    Mono<Account> findAccountById(UUID accountId);
+    Mono<Account> findAccountByNumber(String accountNumber);
+    Flux<Account> findAccountsByOwnerId(UUID ownerId);
+    Mono<Boolean> existsAccountByNumber(String accountNumber);
 }
 ```
 
@@ -694,13 +694,13 @@ public class GlobalExceptionHandler {
 ```
 1. Controller recibe CreateAccountRequest (DTO)
         ↓
-2. Controller llama CreateAccountUseCase.execute(request)
+2. Controller llama CreateAccountUseCase.createAccount(request)
         ↓
 3. Service valida que la Persona exista via PersonRepository
         ↓
 4. Service crea entidad Account (valida reglas de negocio)
         ↓
-5. Service llama AccountRepository.save(account) → R2DBC
+5. Service llama AccountRepository.saveAccount(account) → R2DBC
         ↓
 6. Service mapea Account → AccountResponse
         ↓

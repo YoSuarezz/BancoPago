@@ -1,69 +1,118 @@
 package com.bancopago.backend.application.secondaryports.mapper;
 
+import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
+import com.bancopago.backend.crosscutting.helpers.TextHelper;
+import com.bancopago.backend.domain.enums.DocumentType;
+import com.bancopago.backend.domain.enums.PersonType;
 import com.bancopago.backend.domain.person.ClientDomain;
 import com.bancopago.backend.domain.person.EmployeeDomain;
 import com.bancopago.backend.domain.person.PersonDomain;
+import com.bancopago.backend.domain.person.PersonError;
+import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
-import com.bancopago.backend.domain.enums.DocumentType;
-import com.bancopago.backend.domain.enums.PersonType;
-import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Mapper manual: {@link PersonDomain} es abstracta (Client/Employee) y los campos de subclase
+ * aún no viven en la tabla {@code person}, por eso se reconstituyen con defaults seguros.
+ */
 @Component
 public class PersonEntityMapper {
 
     public PersonEntity toEntity(PersonDomain domain) {
-        if (domain == null) return null;
+        if (domain == null) {
+            return null;
+        }
         PersonEntity entity = new PersonEntity();
         entity.setId(domain.getId());
-        entity.setNombre(domain.getName());
-        entity.setDocumento(domain.getDocument());
-        entity.setTipoDocumento(mapDocumentType(domain.getDocumentType()));
+        entity.setName(domain.getName());
+        entity.setDocumentNumber(domain.getDocument());
+        entity.setDocumentType(requireEnumName(domain.getDocumentType(), PersonError.DOCUMENT_TYPE_REQUIRED));
         entity.setEmail(domain.getEmail());
-        entity.setTelefono(domain.getPhone());
-        entity.setTipo(mapPersonType(domain.getPersonType()));
+        entity.setPhone(domain.getPhone());
+        entity.setPersonType(requireEnumName(domain.getPersonType(), PersonError.TYPE_REQUIRED));
+        entity.markNew();
         return entity;
     }
 
     public PersonDomain toDomain(PersonEntity entity) {
-        if (entity == null) return null;
-        var documentNumber = new DocumentNumber(mapDocumentType(entity.getTipoDocumento()), entity.getDocumento());
+        if (entity == null) {
+            return null;
+        }
+        var documentNumber = new DocumentNumber(
+                parseDocumentType(entity.getDocumentType()),
+                entity.getDocumentNumber()
+        );
         var email = new Email(entity.getEmail());
-        PersonType personType = mapPersonType(entity.getTipo());
+        PersonType personType = parsePersonType(entity.getPersonType());
+
         if (personType == PersonType.EMPLOYEE) {
             return new EmployeeDomain(
-                    entity.getId(), documentNumber, entity.getNombre(),
-                    email, entity.getTelefono(), null, null, null, null
+                    entity.getId(),
+                    documentNumber,
+                    entity.getName(),
+                    email,
+                    entity.getPhone(),
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY
             );
         }
         return new ClientDomain(
-                entity.getId(), documentNumber, entity.getNombre(),
-                email, entity.getTelefono(), null, null
+                entity.getId(),
+                documentNumber,
+                entity.getName(),
+                email,
+                entity.getPhone(),
+                TextHelper.EMPTY,
+                null
         );
     }
 
     public List<PersonEntity> toEntityCollection(List<PersonDomain> domainList) {
-        if (domainList == null) return List.of();
-        return domainList.stream().map(this::toEntity).collect(Collectors.toList());
+        if (domainList == null) {
+            return List.of();
+        }
+        return domainList.stream().map(this::toEntity).toList();
     }
 
     public List<PersonDomain> toDomainCollection(List<PersonEntity> entityList) {
-        if (entityList == null) return List.of();
-        return entityList.stream().map(this::toDomain).collect(Collectors.toList());
+        if (entityList == null) {
+            return List.of();
+        }
+        return entityList.stream().map(this::toDomain).toList();
     }
 
-    private String mapDocumentType(DocumentType type) { return type != null ? type.name() : null; }
-    private DocumentType mapDocumentType(String value) {
-        if (value == null) return null;
-        try { return DocumentType.valueOf(value.toUpperCase()); } catch (IllegalArgumentException e) { return null; }
+    private String requireEnumName(Enum<?> value, PersonError error) {
+        if (value == null) {
+            throw InvalidPersonException.create(error);
+        }
+        return value.name();
     }
-    private String mapPersonType(PersonType type) { return type != null ? type.name() : null; }
-    private PersonType mapPersonType(String value) {
-        if (value == null) return null;
-        try { return PersonType.valueOf(value.toUpperCase()); } catch (IllegalArgumentException e) { return null; }
+
+    private DocumentType parseDocumentType(String value) {
+        if (TextHelper.isBlank(value)) {
+            throw InvalidPersonException.create(PersonError.DOCUMENT_TYPE_REQUIRED);
+        }
+        try {
+            return DocumentType.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw InvalidPersonException.create(PersonError.DOCUMENT_TYPE_REQUIRED);
+        }
+    }
+
+    private PersonType parsePersonType(String value) {
+        if (TextHelper.isBlank(value)) {
+            throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
+        }
+        try {
+            return PersonType.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
+        }
     }
 }

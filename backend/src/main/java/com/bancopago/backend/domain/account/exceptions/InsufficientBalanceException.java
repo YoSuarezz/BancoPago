@@ -2,9 +2,13 @@ package com.bancopago.backend.domain.account.exceptions;
 
 import com.bancopago.backend.crosscutting.exception.DomainException;
 import com.bancopago.backend.domain.account.AccountError;
+
+import java.io.Serial;
 import java.math.BigDecimal;
 
 public class InsufficientBalanceException extends DomainException {
+
+    @Serial
     private static final long serialVersionUID = 1L;
     private final BigDecimal currentBalance;
     private final BigDecimal requiredAmount;

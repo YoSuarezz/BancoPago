@@ -28,8 +28,8 @@ Guía paso a paso para implementar nuevas funcionalidades usando Clean Architect
 
 ### Convenciones del Proyecto
 - **Idioma:** Código en **inglés**; documentación en **español**
-- **BD:** Tablas en **español** (`persona`, `cuenta`); modelos de dominio en inglés
-- **Nombres:** Clases en PascalCase, métodos en camelCase, constantes en UPPER_SNAKE_CASE
+- **BD:** Tablas/columnas y enums en **inglés** (`person`, `account`); solo mensajes de usuario (`*Error`) en español
+- **Nombres:** Clases en PascalCase, métodos en camelCase **explícitos** (`saveAccount`, `createAccount`), constantes en UPPER_SNAKE_CASE
 - **Paquetes:** minúsculas, singular: `domain.account.*`, `domain.person.*`
 - **No Lombok:** Getters, setters y constructores manuales
 - **Excepciones:** Siempre con constructor privado + `create()` estático
@@ -362,11 +362,11 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface AccountRepository {
-    Mono<Account> save(Account account);
-    Mono<Account> findById(UUID id);
-    Mono<Account> findByNumber(String number);
-    Flux<Account> findByOwnerId(UUID ownerId);
-    Mono<Boolean> existsByNumber(String number);
+    Mono<Account> saveAccount(Account account);
+    Mono<Account> findAccountById(UUID accountId);
+    Mono<Account> findAccountByNumber(String accountNumber);
+    Flux<Account> findAccountsByOwnerId(UUID ownerId);
+    Mono<Boolean> existsAccountByNumber(String accountNumber);
 }
 ```
 
@@ -387,7 +387,7 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface CreateAccountUseCase {
-    Mono<AccountResponse> execute(CreateAccountRequest request);
+    Mono<AccountResponse> createAccount(CreateAccountRequest request);
 }
 ```
 
@@ -424,12 +424,12 @@ public class CreateAccountService implements CreateAccountUseCase {
     }
 
     @Override
-    public Mono<AccountResponse> execute(CreateAccountRequest request) {
+    public Mono<AccountResponse> createAccount(CreateAccountRequest request) {
         // 1. Validar que el dueño existe
-        return personRepository.findById(request.ownerId())
+        return personRepository.findPersonById(request.ownerId())
             .switchIfEmpty(Mono.error(new PersonNotFoundException(request.ownerId())))
             // 2. Validar que el número de cuenta es único
-            .flatMap(person -> accountRepository.existsByNumber(request.number())
+            .flatMap(person -> accountRepository.existsAccountByNumber(request.number())
                 .flatMap(exists -> {
                     if (exists) {
                         return Mono.error(new DuplicateAccountException(request.number()));
@@ -441,7 +441,7 @@ public class CreateAccountService implements CreateAccountUseCase {
                         request.type()
                     );
                     // 4. Persistir y mapear a response
-                    return accountRepository.save(account);
+                    return accountRepository.saveAccount(account);
                 })
             )
             .map(AccountResponse::fromDomain);
@@ -592,9 +592,10 @@ import java.util.UUID;
 
 @Repository
 public interface AccountR2dbcRepository extends R2dbcRepository<AccountEntity, UUID> {
-    Mono<AccountEntity> findByNumber(String number);
-    Flux<AccountEntity> findByOwnerId(UUID ownerId);
-    Mono<Boolean> existsByNumber(String number);
+    // Spring Data derived queries may follow property names; the *port* methods stay explicit.
+    Mono<AccountEntity> findByAccountNumber(String accountNumber);
+    Flux<AccountEntity> findByPersonId(UUID personId);
+    Mono<Boolean> existsByAccountNumber(String accountNumber);
 }
 ```
 
@@ -616,42 +617,42 @@ import java.util.UUID;
 @Component
 public class AccountR2dbcAdapter implements AccountRepository {
 
-    private final AccountR2dbcRepository repository;
-    private final AccountEntityMapper mapper;
+    private final AccountR2dbcRepository accountR2dbcRepository;
+    private final AccountEntityMapper accountEntityMapper;
 
-    public AccountR2dbcAdapter(AccountR2dbcRepository repository,
-                                AccountEntityMapper mapper) {
-        this.repository = repository;
-        this.mapper = mapper;
+    public AccountR2dbcAdapter(AccountR2dbcRepository accountR2dbcRepository,
+                               AccountEntityMapper accountEntityMapper) {
+        this.accountR2dbcRepository = accountR2dbcRepository;
+        this.accountEntityMapper = accountEntityMapper;
     }
 
     @Override
-    public Mono<Account> save(Account account) {
-        return repository.save(mapper.toEntity(account))
-            .map(mapper::toDomain);
+    public Mono<Account> saveAccount(Account account) {
+        return accountR2dbcRepository.save(accountEntityMapper.toEntity(account))
+            .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<Account> findById(UUID id) {
-        return repository.findById(id)
-            .map(mapper::toDomain);
+    public Mono<Account> findAccountById(UUID accountId) {
+        return accountR2dbcRepository.findById(accountId)
+            .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<Account> findByNumber(String number) {
-        return repository.findByNumber(number)
-            .map(mapper::toDomain);
+    public Mono<Account> findAccountByNumber(String accountNumber) {
+        return accountR2dbcRepository.findByAccountNumber(accountNumber)
+            .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Flux<Account> findByOwnerId(UUID ownerId) {
-        return repository.findByOwnerId(ownerId)
-            .map(mapper::toDomain);
+    public Flux<Account> findAccountsByOwnerId(UUID ownerId) {
+        return accountR2dbcRepository.findByPersonId(ownerId)
+            .map(accountEntityMapper::toDomain);
     }
 
     @Override
-    public Mono<Boolean> existsByNumber(String number) {
-        return repository.existsByNumber(number);
+    public Mono<Boolean> existsAccountByNumber(String accountNumber) {
+        return accountR2dbcRepository.existsByAccountNumber(accountNumber);
     }
 }
 ```
@@ -759,19 +760,19 @@ public class AccountController {
 
     @PostMapping
     public Mono<ResponseEntity<AccountResponse>> create(@RequestBody @Valid CreateAccountRequest request) {
-        return createAccountUseCase.execute(request)
+        return createAccountUseCase.createAccount(request)
             .map(response -> ResponseEntity.status(HttpStatus.CREATED).body(response));
     }
 
     @GetMapping("/{id}/balance")
     public Mono<ResponseEntity<BigDecimal>> getBalance(@PathVariable UUID id) {
-        return getBalanceUseCase.execute(id)
+        return getBalanceUseCase.getAccountBalance(id)
             .map(ResponseEntity::ok);
     }
 
     @GetMapping(value = "/{id}/balance/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<BalanceEvent>> streamBalance(@PathVariable UUID id) {
-        return getBalanceUseCase.stream(id)
+        return getBalanceUseCase.streamAccountBalance(id)
             .map(event -> ServerSentEvent.builder(event)
                 .id(event.eventId())
                 .event("balance-update")
@@ -908,14 +909,14 @@ class CreateAccountServiceTest {
         var ownerId = UUID.randomUUID();
         var request = new CreateAccountRequest(ownerId, "001-123", AccountType.SAVINGS);
 
-        when(personRepository.findById(ownerId))
+        when(personRepository.findPersonById(ownerId))
             .thenReturn(Mono.just(new Person(/* ... */)));
-        when(accountRepository.existsByNumber("001-123"))
+        when(accountRepository.existsAccountByNumber("001-123"))
             .thenReturn(Mono.just(false));
-        when(accountRepository.save(any()))
+        when(accountRepository.saveAccount(any()))
             .thenReturn(Mono.just(/* account with ID */));
 
-        StepVerifier.create(service.execute(request))
+        StepVerifier.create(service.createAccount(request))
             .assertNext(response -> {
                 assertNotNull(response.id());
                 assertEquals("001-123", response.number());
@@ -928,10 +929,10 @@ class CreateAccountServiceTest {
         var ownerId = UUID.randomUUID();
         var request = new CreateAccountRequest(ownerId, "001-123", AccountType.SAVINGS);
 
-        when(personRepository.findById(ownerId))
+        when(personRepository.findPersonById(ownerId))
             .thenReturn(Mono.empty());
 
-        StepVerifier.create(service.execute(request))
+        StepVerifier.create(service.createAccount(request))
             .expectError(PersonNotFoundException.class)
             .verify();
     }
@@ -1018,7 +1019,9 @@ V3__add_transaction_indexes.sql
 | DTO Request | PascalCase + `Request` | `CreateAccountRequest` |
 | DTO Response | PascalCase + `Response` | `AccountResponse` |
 | Paquetes | minúsculas.singular | `domain.account`, `application.service` |
-| Métodos | camelCase | `findById`, `execute`, `processPayment` |
+| Métodos de repositorio (puerto) | `verb` + entidad + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument` |
+| Métodos de use case concreto | `verb` + sujeto de negocio | `createAccount`, `getAccountBalance`, `blockAccount` |
+| Métodos genéricos técnicos | `execute` solo en `UseCase*` / `Interactor*` genéricos | No usar `execute` como API pública del use case concreto |
 | Constantes | UPPER_SNAKE_CASE | `MAX_CONCURRENCY`, `DEFAULT_CURRENCY` |
 
 ### Checklist de Implementación
@@ -1036,11 +1039,12 @@ V3__add_transaction_indexes.sql
 - [ ] Implementación de use case (en `application/usecase/{module}/impl/`)
 - [ ] DTOs Request con anotaciones Jakarta Validation (`@NotBlank`, `@NotNull`, etc.)
 - [ ] DTOs Response con `fromDomain()` estático
-- [ ] Entidad R2DBC con `@Table("nombre_espanol")`, constructor antinulos + `create()` (si hay nueva tabla)
-- [ ] Migración Flyway en español (si hay nueva tabla)
-- [ ] Adaptador R2DBC implementando el puerto
-- [ ] Mapper manual Entity↔Domain (traducción español→inglés + VOs)
+- [ ] Entidad R2DBC con `@Table("english_name")`, constructor antinulos + `create()` (si hay nueva tabla)
+- [ ] Migración Flyway en inglés (si hay nueva tabla)
+- [ ] Adaptador R2DBC implementando el puerto con métodos explícitos (`saveAccount`, `findPersonById`, …)
+- [ ] Mapper manual Entity↔Domain (VOs + herencia)
 - [ ] Controller REST con `@Valid` en request body
+- [ ] Use case concreto con método de negocio explícito (`createAccount`, no `execute`)
 - [ ] Entradas en GlobalExceptionHandler (mapeo DomainError→HTTP)
 - [ ] Tests unitarios de reglas de dominio (VOs + entidades)
 - [ ] Tests unitarios de orquestación de use case (StepVerifier)

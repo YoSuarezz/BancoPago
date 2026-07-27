@@ -6,8 +6,12 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface PersonRepository {
-    Mono<PersonDomain> save(PersonDomain person);
-    Mono<PersonDomain> findById(UUID id);
-    Mono<PersonDomain> findByDocument(String document, String documentType);
-    Mono<Boolean> existsByDocument(String document);
+
+    Mono<PersonDomain> savePerson(PersonDomain person);
+
+    Mono<PersonDomain> findPersonById(UUID personId);
+
+    Mono<PersonDomain> findPersonByDocument(String documentNumber, String documentType);
+
+    Mono<Boolean> existsPersonByDocument(String documentNumber);
 }

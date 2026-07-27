@@ -168,11 +168,12 @@ test/
 
 **Checklist rápido:**
 - [ ] Value Objects en `vo/` con compact constructor
-- [ ] `{{Modulo}}Error.java` con mensajes en español
+- [ ] `{{Modulo}}Error.java` con mensajes en español (único texto de usuario en español)
 - [ ] Excepciones con `create()` + `serialVersionUID`
 - [ ] DTOs con Jakarta Validation (`@NotBlank`, `@NotNull`)
-- [ ] Mapper Entity↔Domain manual (nombres español)
+- [ ] Mapper Entity↔Domain manual (VOs + herencia)
 - [ ] Mapper DTO↔Domain con MapStruct
+- [ ] Métodos de repositorio/use case **explícitos** (`saveAccount`, `findPersonByDocument`, `createAccount` — no `save`/`execute` ambiguos)
 - [ ] Controller con `@Valid`
 - [ ] Tests con StepVerifier para flujos reactivos
 
