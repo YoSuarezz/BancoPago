@@ -11,9 +11,9 @@ import java.util.UUID;
 @Repository
 public interface AccountR2dbcRepository extends R2dbcRepository<AccountEntity, UUID> {
 
-    Mono<AccountEntity> findByNumero(String numero);
+    Mono<AccountEntity> findByAccountNumber(String accountNumber);
 
-    Flux<AccountEntity> findByPersonaId(UUID personaId);
+    Flux<AccountEntity> findByPersonId(UUID personId);
 
-    Mono<Boolean> existsByNumero(String numero);
+    Mono<Boolean> existsByAccountNumber(String accountNumber);
 }

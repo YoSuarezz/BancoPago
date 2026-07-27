@@ -28,7 +28,7 @@ Guía paso a paso para implementar nuevas funcionalidades usando Clean Architect
 
 ### Convenciones del Proyecto
 - **Idioma:** Código en **inglés**; documentación en **español**
-- **BD:** Tablas en **español** (`persona`, `cuenta`); modelos de dominio en inglés
+- **BD:** Tablas/columnas y enums en **inglés** (`person`, `account`); solo mensajes de usuario (`*Error`) en español
 - **Nombres:** Clases en PascalCase, métodos en camelCase, constantes en UPPER_SNAKE_CASE
 - **Paquetes:** minúsculas, singular: `domain.account.*`, `domain.person.*`
 - **No Lombok:** Getters, setters y constructores manuales

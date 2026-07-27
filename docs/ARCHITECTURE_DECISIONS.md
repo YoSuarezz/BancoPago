@@ -286,10 +286,11 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 
 | Contexto | Idioma | Ejemplo |
 |----------|--------|---------|
-| Código Java (clases, métodos, vars) | Inglés | `AccountDomain`, `getBalance()`, `ownerId` |
+| Código Java (clases, métodos, vars, entities) | Inglés | `AccountDomain`, `getBalance()`, `ownerId` |
 | Documentación (`.md` files) | **Español** | Todos los archivos .md |
-| Nombres de tablas y columnas BD | Español | `persona`, `cuenta`, `numero`, `tipo_documento` |
-| Mensajes de error al usuario | Español | `"El número de cuenta no puede estar vacío"` |
+| Nombres de tablas y columnas BD | Inglés | `person`, `account`, `account_number`, `document_type` |
+| Valores de enums en BD / dominio | Inglés | `CLIENT`, `ACTIVE`, `SAVINGS` |
+| Mensajes de error al usuario (`*Error`, excepciones) | Español | `"El número de cuenta no puede estar vacío"` |
 
 ### 4.2 Nomenclatura
 

@@ -11,18 +11,20 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("persona")
+@Table("person")
 public class PersonEntity implements Persistable<UUID> {
 
     @Id
     private UUID id;
-    private String nombre;
-    private String documento;
-    @Column("tipo_documento")
-    private String tipoDocumento;
+    private String name;
+    @Column("document_number")
+    private String documentNumber;
+    @Column("document_type")
+    private String documentType;
     private String email;
-    private String telefono;
-    private String tipo;
+    private String phone;
+    @Column("person_type")
+    private String personType;
     @Column("created_at")
     private LocalDateTime createdAt;
 
@@ -31,60 +33,62 @@ public class PersonEntity implements Persistable<UUID> {
 
     public PersonEntity() {
         setId(UUID.randomUUID());
-        setNombre(TextHelper.EMPTY);
-        setDocumento(TextHelper.EMPTY);
-        setTipoDocumento(TextHelper.EMPTY);
+        setName(TextHelper.EMPTY);
+        setDocumentNumber(TextHelper.EMPTY);
+        setDocumentType(TextHelper.EMPTY);
         setEmail(TextHelper.EMPTY);
-        setTelefono(TextHelper.EMPTY);
-        setTipo(TextHelper.EMPTY);
+        setPhone(TextHelper.EMPTY);
+        setPersonType(TextHelper.EMPTY);
         setCreatedAt(LocalDateTime.now());
         this.newEntity = true;
     }
 
-    public static PersonEntity create() { return new PersonEntity(); }
+    public static PersonEntity create() {
+        return new PersonEntity();
+    }
 
-    public static PersonEntity create(UUID id, String nombre, String documento,
-                                       String tipoDocumento, String email,
-                                       String telefono, String tipo, LocalDateTime createdAt) {
+    public static PersonEntity create(UUID id, String name, String documentNumber,
+                                      String documentType, String email,
+                                      String phone, String personType, LocalDateTime createdAt) {
         PersonEntity entity = new PersonEntity();
         entity.setId(id);
-        entity.setNombre(nombre);
-        entity.setDocumento(documento);
-        entity.setTipoDocumento(tipoDocumento);
+        entity.setName(name);
+        entity.setDocumentNumber(documentNumber);
+        entity.setDocumentType(documentType);
         entity.setEmail(email);
-        entity.setTelefono(telefono);
-        entity.setTipo(tipo);
+        entity.setPhone(phone);
+        entity.setPersonType(personType);
         entity.setCreatedAt(createdAt);
         return entity;
     }
 
-    public static PersonEntity create(String nombre, String documento,
-                                       String tipoDocumento, String email,
-                                       String telefono, String tipo) {
-        return create(UUID.randomUUID(), nombre, documento, tipoDocumento,
-                email, telefono, tipo, LocalDateTime.now());
+    public static PersonEntity create(String name, String documentNumber,
+                                      String documentType, String email,
+                                      String phone, String personType) {
+        return create(UUID.randomUUID(), name, documentNumber, documentType,
+                email, phone, personType, LocalDateTime.now());
     }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = ObjectHelper.getDefault(id, UUID.randomUUID()); }
 
-    public String getNombre() { return TextHelper.applyTrim(nombre); }
-    public void setNombre(String nombre) { this.nombre = TextHelper.applyTrim(nombre); }
+    public String getName() { return TextHelper.applyTrim(name); }
+    public void setName(String name) { this.name = TextHelper.applyTrim(name); }
 
-    public String getDocumento() { return TextHelper.applyTrim(documento); }
-    public void setDocumento(String documento) { this.documento = TextHelper.applyTrim(documento); }
+    public String getDocumentNumber() { return TextHelper.applyTrim(documentNumber); }
+    public void setDocumentNumber(String documentNumber) { this.documentNumber = TextHelper.applyTrim(documentNumber); }
 
-    public String getTipoDocumento() { return TextHelper.applyTrim(tipoDocumento); }
-    public void setTipoDocumento(String tipoDocumento) { this.tipoDocumento = TextHelper.applyTrim(tipoDocumento); }
+    public String getDocumentType() { return TextHelper.applyTrim(documentType); }
+    public void setDocumentType(String documentType) { this.documentType = TextHelper.applyTrim(documentType); }
 
     public String getEmail() { return TextHelper.applyTrim(email); }
     public void setEmail(String email) { this.email = TextHelper.applyTrim(email); }
 
-    public String getTelefono() { return TextHelper.applyTrim(telefono); }
-    public void setTelefono(String telefono) { this.telefono = TextHelper.applyTrim(telefono); }
+    public String getPhone() { return TextHelper.applyTrim(phone); }
+    public void setPhone(String phone) { this.phone = TextHelper.applyTrim(phone); }
 
-    public String getTipo() { return TextHelper.applyTrim(tipo); }
-    public void setTipo(String tipo) { this.tipo = TextHelper.applyTrim(tipo); }
+    public String getPersonType() { return TextHelper.applyTrim(personType); }
+    public void setPersonType(String personType) { this.personType = TextHelper.applyTrim(personType); }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = ObjectHelper.getDefault(createdAt, LocalDateTime.now()); }

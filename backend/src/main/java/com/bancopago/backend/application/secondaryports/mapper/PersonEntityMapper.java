@@ -1,11 +1,14 @@
 package com.bancopago.backend.application.secondaryports.mapper;
 
 import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
+import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.enums.DocumentType;
 import com.bancopago.backend.domain.enums.PersonType;
 import com.bancopago.backend.domain.person.ClientDomain;
 import com.bancopago.backend.domain.person.EmployeeDomain;
 import com.bancopago.backend.domain.person.PersonDomain;
+import com.bancopago.backend.domain.person.PersonError;
+import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
 import org.springframework.stereotype.Component;
@@ -13,6 +16,15 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Manual Entity ↔ Domain mapper.
+ * Kept manual (not MapStruct) because {@link PersonDomain} is abstract and must be
+ * reconstituted as {@link ClientDomain} or {@link EmployeeDomain}, and because
+ * persistence columns map to Value Objects ({@link DocumentNumber}, {@link Email}).
+ * <p>
+ * Subclass-only fields (clientNumber, position, etc.) are not stored in {@code person}
+ * yet, so reconstitution uses safe defaults rather than inventing persisted values.
+ */
 @Component
 public class PersonEntityMapper {
 
@@ -22,12 +34,12 @@ public class PersonEntityMapper {
         }
         PersonEntity entity = new PersonEntity();
         entity.setId(domain.getId());
-        entity.setNombre(domain.getName());
-        entity.setDocumento(domain.getDocument());
-        entity.setTipoDocumento(mapDocumentType(domain.getDocumentType()));
+        entity.setName(domain.getName());
+        entity.setDocumentNumber(domain.getDocument());
+        entity.setDocumentType(requireEnumName(domain.getDocumentType(), PersonError.DOCUMENT_TYPE_REQUIRED));
         entity.setEmail(domain.getEmail());
-        entity.setTelefono(domain.getPhone());
-        entity.setTipo(mapPersonType(domain.getPersonType()));
+        entity.setPhone(domain.getPhone());
+        entity.setPersonType(requireEnumName(domain.getPersonType(), PersonError.TYPE_REQUIRED));
         entity.markNew();
         return entity;
     }
@@ -36,18 +48,34 @@ public class PersonEntityMapper {
         if (entity == null) {
             return null;
         }
-        var documentNumber = new DocumentNumber(mapDocumentType(entity.getTipoDocumento()), entity.getDocumento());
+        var documentNumber = new DocumentNumber(
+                parseDocumentType(entity.getDocumentType()),
+                entity.getDocumentNumber()
+        );
         var email = new Email(entity.getEmail());
-        PersonType personType = mapPersonType(entity.getTipo());
+        PersonType personType = parsePersonType(entity.getPersonType());
+
         if (personType == PersonType.EMPLOYEE) {
             return new EmployeeDomain(
-                    entity.getId(), documentNumber, entity.getNombre(),
-                    email, entity.getTelefono(), null, null, null, null
+                    entity.getId(),
+                    documentNumber,
+                    entity.getName(),
+                    email,
+                    entity.getPhone(),
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY,
+                    TextHelper.EMPTY
             );
         }
         return new ClientDomain(
-                entity.getId(), documentNumber, entity.getNombre(),
-                email, entity.getTelefono(), null, null
+                entity.getId(),
+                documentNumber,
+                entity.getName(),
+                email,
+                entity.getPhone(),
+                TextHelper.EMPTY,
+                null
         );
     }
 
@@ -65,39 +93,32 @@ public class PersonEntityMapper {
         return entityList.stream().map(this::toDomain).collect(Collectors.toList());
     }
 
-    private String mapDocumentType(DocumentType type) {
-        return type != null ? type.name() : null;
+    private String requireEnumName(Enum<?> value, PersonError error) {
+        if (value == null) {
+            throw InvalidPersonException.create(error);
+        }
+        return value.name();
     }
 
-    private DocumentType mapDocumentType(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private DocumentType parseDocumentType(String value) {
+        if (TextHelper.isBlank(value)) {
+            throw InvalidPersonException.create(PersonError.DOCUMENT_TYPE_REQUIRED);
         }
         try {
             return DocumentType.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
+        } catch (IllegalArgumentException ex) {
+            throw InvalidPersonException.create(PersonError.DOCUMENT_TYPE_REQUIRED);
         }
     }
 
-    private String mapPersonType(PersonType type) {
-        if (type == null) {
-            return null;
+    private PersonType parsePersonType(String value) {
+        if (TextHelper.isBlank(value)) {
+            throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
         }
-        return switch (type) {
-            case CLIENT -> "CLIENTE";
-            case EMPLOYEE -> "EMPLEADO";
-        };
-    }
-
-    private PersonType mapPersonType(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+        try {
+            return PersonType.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
         }
-        return switch (value.trim().toUpperCase()) {
-            case "CLIENTE", "CLIENT" -> PersonType.CLIENT;
-            case "EMPLEADO", "EMPLOYEE" -> PersonType.EMPLOYEE;
-            default -> null;
-        };
     }
 }

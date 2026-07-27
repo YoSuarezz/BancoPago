@@ -46,16 +46,16 @@ public class AccountR2dbcAdapter implements AccountRepository {
 
     @Override
     public Mono<AccountDomain> findByNumber(String number) {
-        return repository.findByNumero(number).map(mapper::toDomain);
+        return repository.findByAccountNumber(number).map(mapper::toDomain);
     }
 
     @Override
     public Flux<AccountDomain> findByOwnerId(UUID ownerId) {
-        return repository.findByPersonaId(ownerId).map(mapper::toDomain);
+        return repository.findByPersonId(ownerId).map(mapper::toDomain);
     }
 
     @Override
     public Mono<Boolean> existsByNumber(String number) {
-        return repository.existsByNumero(number);
+        return repository.existsByAccountNumber(number);
     }
 }

@@ -1,7 +1,10 @@
 package com.bancopago.backend.application.secondaryports.mapper;
 
 import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
+import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.account.AccountDomain;
+import com.bancopago.backend.domain.account.AccountError;
+import com.bancopago.backend.domain.account.exceptions.InvalidAccountException;
 import com.bancopago.backend.domain.account.vo.AccountNumber;
 import com.bancopago.backend.domain.account.vo.Money;
 import com.bancopago.backend.domain.enums.AccountStatus;
@@ -12,6 +15,11 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Manual Entity ↔ Domain mapper.
+ * Kept manual (not MapStruct) because domain reconstitution must build Value Objects
+ * ({@link AccountNumber}, {@link Money}) and validate enum persistence values.
+ */
 @Component
 public class AccountEntityMapper {
 
@@ -23,10 +31,10 @@ public class AccountEntityMapper {
                 domain.getId(),
                 domain.getOwnerId(),
                 domain.getNumber(),
-                mapAccountType(domain.getType()),
+                requireEnumName(domain.getType(), AccountError.TYPE_REQUIRED),
                 domain.getBalance(),
-                mapCurrency(domain.getCurrency()),
-                mapAccountStatus(domain.getStatus()),
+                domain.getCurrency() != null ? domain.getCurrency().name() : Currency.COP.name(),
+                domain.getStatus() != null ? domain.getStatus().name() : AccountStatus.ACTIVE.name(),
                 0L,
                 null
         );
@@ -40,11 +48,11 @@ public class AccountEntityMapper {
         }
         return new AccountDomain(
                 entity.getId(),
-                entity.getPersonaId(),
-                new AccountNumber(entity.getNumero()),
-                mapAccountType(entity.getTipo()),
-                new Money(entity.getSaldo(), mapCurrency(entity.getMoneda())),
-                mapAccountStatus(entity.getEstado())
+                entity.getPersonId(),
+                new AccountNumber(entity.getAccountNumber()),
+                parseAccountType(entity.getAccountType()),
+                new Money(entity.getBalance(), parseCurrency(entity.getCurrency())),
+                parseAccountStatus(entity.getStatus())
         );
     }
 
@@ -62,70 +70,43 @@ public class AccountEntityMapper {
         return entityList.stream().map(this::toDomain).collect(Collectors.toList());
     }
 
-    private String mapAccountType(AccountType type) {
-        if (type == null) {
-            return null;
+    private String requireEnumName(Enum<?> value, AccountError error) {
+        if (value == null) {
+            throw InvalidAccountException.create(error);
         }
-        return switch (type) {
-            case CHECKING -> "CORRIENTE";
-            case SAVINGS -> "AHORROS";
-            case PAYROLL -> "NOMINA";
-            case TREASURY -> "TESORERIA";
-            case SUPPLIER -> "PROVEEDOR";
-        };
+        return value.name();
     }
 
-    private AccountType mapAccountType(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private AccountType parseAccountType(String value) {
+        if (TextHelper.isBlank(value)) {
+            throw InvalidAccountException.create(AccountError.TYPE_REQUIRED);
         }
-        return switch (value.trim().toUpperCase()) {
-            case "CORRIENTE", "CHECKING" -> AccountType.CHECKING;
-            case "AHORROS", "SAVINGS" -> AccountType.SAVINGS;
-            case "NOMINA", "PAYROLL" -> AccountType.PAYROLL;
-            case "TESORERIA", "TREASURY" -> AccountType.TREASURY;
-            case "PROVEEDOR", "SUPPLIER" -> AccountType.SUPPLIER;
-            default -> null;
-        };
+        try {
+            return AccountType.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw InvalidAccountException.create(AccountError.TYPE_REQUIRED);
+        }
     }
 
-    private String mapCurrency(Currency currency) {
-        return currency != null ? currency.name() : null;
-    }
-
-    private Currency mapCurrency(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private Currency parseCurrency(String value) {
+        if (TextHelper.isBlank(value)) {
+            return Currency.COP;
         }
         try {
             return Currency.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
+        } catch (IllegalArgumentException ex) {
+            return Currency.COP;
         }
     }
 
-    private String mapAccountStatus(AccountStatus status) {
-        if (status == null) {
-            return null;
+    private AccountStatus parseAccountStatus(String value) {
+        if (TextHelper.isBlank(value)) {
+            return AccountStatus.ACTIVE;
         }
-        return switch (status) {
-            case ACTIVE -> "ACTIVA";
-            case INACTIVE -> "INACTIVA";
-            case BLOCKED -> "BLOQUEADA";
-            case SEIZED -> "EMBARGADA";
-        };
-    }
-
-    private AccountStatus mapAccountStatus(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+        try {
+            return AccountStatus.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw InvalidAccountException.create(AccountError.INVALID_STATE, "reconstitute", "unknown", value);
         }
-        return switch (value.trim().toUpperCase()) {
-            case "ACTIVA", "ACTIVE" -> AccountStatus.ACTIVE;
-            case "INACTIVA", "INACTIVE" -> AccountStatus.INACTIVE;
-            case "BLOQUEADA", "BLOCKED" -> AccountStatus.BLOCKED;
-            case "EMBARGADA", "SEIZED" -> AccountStatus.SEIZED;
-            default -> null;
-        };
     }
 }

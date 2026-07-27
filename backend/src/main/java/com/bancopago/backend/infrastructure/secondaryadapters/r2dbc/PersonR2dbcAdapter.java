@@ -44,12 +44,12 @@ public class PersonR2dbcAdapter implements PersonRepository {
 
     @Override
     public Mono<PersonDomain> findByDocument(String document, String documentType) {
-        return repository.findByDocumentoAndTipoDocumento(document, documentType)
+        return repository.findByDocumentNumberAndDocumentType(document, documentType)
                 .map(mapper::toDomain);
     }
 
     @Override
     public Mono<Boolean> existsByDocument(String document) {
-        return repository.existsByDocumento(document);
+        return repository.existsByDocumentNumber(document);
     }
 }

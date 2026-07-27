@@ -13,18 +13,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("cuenta")
+@Table("account")
 public class AccountEntity implements Persistable<UUID> {
 
     @Id
     private UUID id;
-    @Column("persona_id")
-    private UUID personaId;
-    private String numero;
-    private String tipo;
-    private BigDecimal saldo;
-    private String moneda;
-    private String estado;
+    @Column("person_id")
+    private UUID personId;
+    @Column("account_number")
+    private String accountNumber;
+    @Column("account_type")
+    private String accountType;
+    private BigDecimal balance;
+    private String currency;
+    private String status;
     @Version
     private Long version;
     @Column("created_at")
@@ -35,59 +37,61 @@ public class AccountEntity implements Persistable<UUID> {
 
     public AccountEntity() {
         setId(UUID.randomUUID());
-        setNumero(TextHelper.EMPTY);
-        setTipo(TextHelper.EMPTY);
-        setSaldo(BigDecimal.ZERO);
-        setMoneda("COP");
-        setEstado("ACTIVA");
+        setAccountNumber(TextHelper.EMPTY);
+        setAccountType(TextHelper.EMPTY);
+        setBalance(BigDecimal.ZERO);
+        setCurrency("COP");
+        setStatus("ACTIVE");
         setVersion(0L);
         setCreatedAt(LocalDateTime.now());
         this.newEntity = true;
     }
 
-    public static AccountEntity create() { return new AccountEntity(); }
+    public static AccountEntity create() {
+        return new AccountEntity();
+    }
 
-    public static AccountEntity create(UUID id, UUID personaId, String numero,
-                                        String tipo, BigDecimal saldo, String moneda,
-                                        String estado, Long version, LocalDateTime createdAt) {
+    public static AccountEntity create(UUID id, UUID personId, String accountNumber,
+                                       String accountType, BigDecimal balance, String currency,
+                                       String status, Long version, LocalDateTime createdAt) {
         AccountEntity entity = new AccountEntity();
         entity.setId(id);
-        entity.setPersonaId(personaId);
-        entity.setNumero(numero);
-        entity.setTipo(tipo);
-        entity.setSaldo(saldo);
-        entity.setMoneda(moneda);
-        entity.setEstado(estado);
+        entity.setPersonId(personId);
+        entity.setAccountNumber(accountNumber);
+        entity.setAccountType(accountType);
+        entity.setBalance(balance);
+        entity.setCurrency(currency);
+        entity.setStatus(status);
         entity.setVersion(version);
         entity.setCreatedAt(createdAt);
         return entity;
     }
 
-    public static AccountEntity create(UUID personaId, String numero, String tipo) {
-        return create(UUID.randomUUID(), personaId, numero, tipo,
-                BigDecimal.ZERO, "COP", "ACTIVA", 0L, LocalDateTime.now());
+    public static AccountEntity create(UUID personId, String accountNumber, String accountType) {
+        return create(UUID.randomUUID(), personId, accountNumber, accountType,
+                BigDecimal.ZERO, "COP", "ACTIVE", 0L, LocalDateTime.now());
     }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = ObjectHelper.getDefault(id, UUID.randomUUID()); }
 
-    public UUID getPersonaId() { return personaId; }
-    public void setPersonaId(UUID personaId) { this.personaId = personaId; }
+    public UUID getPersonId() { return personId; }
+    public void setPersonId(UUID personId) { this.personId = personId; }
 
-    public String getNumero() { return TextHelper.applyTrim(numero); }
-    public void setNumero(String numero) { this.numero = TextHelper.applyTrim(numero); }
+    public String getAccountNumber() { return TextHelper.applyTrim(accountNumber); }
+    public void setAccountNumber(String accountNumber) { this.accountNumber = TextHelper.applyTrim(accountNumber); }
 
-    public String getTipo() { return TextHelper.applyTrim(tipo); }
-    public void setTipo(String tipo) { this.tipo = TextHelper.applyTrim(tipo); }
+    public String getAccountType() { return TextHelper.applyTrim(accountType); }
+    public void setAccountType(String accountType) { this.accountType = TextHelper.applyTrim(accountType); }
 
-    public BigDecimal getSaldo() { return saldo; }
-    public void setSaldo(BigDecimal saldo) { this.saldo = ObjectHelper.getDefault(saldo, BigDecimal.ZERO); }
+    public BigDecimal getBalance() { return balance; }
+    public void setBalance(BigDecimal balance) { this.balance = ObjectHelper.getDefault(balance, BigDecimal.ZERO); }
 
-    public String getMoneda() { return TextHelper.applyTrim(moneda); }
-    public void setMoneda(String moneda) { this.moneda = TextHelper.applyTrim(moneda); }
+    public String getCurrency() { return TextHelper.applyTrim(currency); }
+    public void setCurrency(String currency) { this.currency = TextHelper.applyTrim(currency); }
 
-    public String getEstado() { return TextHelper.applyTrim(estado); }
-    public void setEstado(String estado) { this.estado = TextHelper.applyTrim(estado); }
+    public String getStatus() { return TextHelper.applyTrim(status); }
+    public void setStatus(String status) { this.status = TextHelper.applyTrim(status); }
 
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = ObjectHelper.getDefault(version, 0L); }

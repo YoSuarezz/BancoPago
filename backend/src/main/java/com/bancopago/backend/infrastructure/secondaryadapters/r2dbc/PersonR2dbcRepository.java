@@ -10,7 +10,7 @@ import java.util.UUID;
 @Repository
 public interface PersonR2dbcRepository extends R2dbcRepository<PersonEntity, UUID> {
 
-    Mono<PersonEntity> findByDocumentoAndTipoDocumento(String documento, String tipoDocumento);
+    Mono<PersonEntity> findByDocumentNumberAndDocumentType(String documentNumber, String documentType);
 
-    Mono<Boolean> existsByDocumento(String documento);
+    Mono<Boolean> existsByDocumentNumber(String documentNumber);
 }
