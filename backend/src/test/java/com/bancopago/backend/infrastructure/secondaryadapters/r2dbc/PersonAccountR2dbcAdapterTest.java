@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -57,6 +58,8 @@ class PersonAccountR2dbcAdapterTest {
                     assertEquals(DocumentType.CC, found.getDocumentType());
                     assertEquals("ana.gomez@example.com", found.getEmail());
                     assertEquals(PersonType.CLIENT, found.getPersonType());
+                    assertEquals("CLI-100", ((ClientDomain) found).getClientNumber());
+                    assertNotNull(((ClientDomain) found).getMembershipDate());
                 })
                 .verifyComplete();
 
@@ -104,6 +107,10 @@ class PersonAccountR2dbcAdapterTest {
                 .assertNext(found -> {
                     assertEquals("Carlos Ruiz Updated", found.getName());
                     assertEquals(PersonType.EMPLOYEE, found.getPersonType());
+                    assertEquals("Analyst", ((EmployeeDomain) found).getPosition());
+                    assertEquals("Payments", ((EmployeeDomain) found).getArea());
+                    assertEquals("CC-01", ((EmployeeDomain) found).getCostCenter());
+                    assertEquals("INDEFINITE", ((EmployeeDomain) found).getContractType());
                 })
                 .verifyComplete();
     }

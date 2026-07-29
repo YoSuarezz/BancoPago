@@ -26,34 +26,34 @@ public class AccountR2dbcAdapter implements AccountRepository {
     public Mono<AccountDomain> saveAccount(AccountDomain account) {
         return accountR2dbcRepository.findById(account.getId())
                 .flatMap(existing -> {
-                    AccountEntity entity = accountEntityMapper.toEntity(account);
+                    AccountEntity entity = accountEntityMapper.toAccountEntity(account);
                     entity.setCreatedAt(existing.getCreatedAt());
                     entity.setVersion(existing.getVersion());
                     entity.markPersisted();
                     return accountR2dbcRepository.save(entity);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                    AccountEntity entity = accountEntityMapper.toEntity(account);
+                    AccountEntity entity = accountEntityMapper.toAccountEntity(account);
                     entity.markNew();
                     return accountR2dbcRepository.save(entity);
                 }))
-                .map(accountEntityMapper::toDomain);
+                .map(accountEntityMapper::toAccountDomain);
     }
 
     @Override
     public Mono<AccountDomain> findAccountById(UUID accountId) {
-        return accountR2dbcRepository.findById(accountId).map(accountEntityMapper::toDomain);
+        return accountR2dbcRepository.findById(accountId).map(accountEntityMapper::toAccountDomain);
     }
 
     @Override
     public Mono<AccountDomain> findAccountByNumber(String accountNumber) {
         return accountR2dbcRepository.findByAccountNumber(accountNumber)
-                .map(accountEntityMapper::toDomain);
+                .map(accountEntityMapper::toAccountDomain);
     }
 
     @Override
     public Flux<AccountDomain> findAccountsByOwnerId(UUID ownerId) {
-        return accountR2dbcRepository.findByPersonId(ownerId).map(accountEntityMapper::toDomain);
+        return accountR2dbcRepository.findByPersonId(ownerId).map(accountEntityMapper::toAccountDomain);
     }
 
     @Override

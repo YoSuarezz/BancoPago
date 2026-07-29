@@ -5,11 +5,8 @@ import java.util.UUID;
 
 public record AccountStatusResponse(
         UUID id,
-        UUID ownerId,
         String number,
-        String type,
-        BigDecimal balance,
-        String currency,
-        String status
+        String status,
+        BigDecimal balance
 ) {
 }

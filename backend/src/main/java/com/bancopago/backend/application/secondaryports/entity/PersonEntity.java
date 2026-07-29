@@ -8,6 +8,7 @@ import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,6 +26,16 @@ public class PersonEntity implements Persistable<UUID> {
     private String phone;
     @Column("person_type")
     private String personType;
+    @Column("client_number")
+    private String clientNumber;
+    @Column("membership_date")
+    private LocalDate membershipDate;
+    private String position;
+    private String area;
+    @Column("cost_center")
+    private String costCenter;
+    @Column("contract_type")
+    private String contractType;
     @Column("created_at")
     private LocalDateTime createdAt;
 
@@ -39,6 +50,11 @@ public class PersonEntity implements Persistable<UUID> {
         setEmail(TextHelper.EMPTY);
         setPhone(TextHelper.EMPTY);
         setPersonType(TextHelper.EMPTY);
+        setClientNumber(TextHelper.EMPTY);
+        setPosition(TextHelper.EMPTY);
+        setArea(TextHelper.EMPTY);
+        setCostCenter(TextHelper.EMPTY);
+        setContractType(TextHelper.EMPTY);
         setCreatedAt(LocalDateTime.now());
         this.newEntity = true;
     }
@@ -49,7 +65,11 @@ public class PersonEntity implements Persistable<UUID> {
 
     public static PersonEntity create(UUID id, String name, String documentNumber,
                                       String documentType, String email,
-                                      String phone, String personType, LocalDateTime createdAt) {
+                                      String phone, String personType,
+                                      String clientNumber, LocalDate membershipDate,
+                                      String position, String area,
+                                      String costCenter, String contractType,
+                                      LocalDateTime createdAt) {
         PersonEntity entity = new PersonEntity();
         entity.setId(id);
         entity.setName(name);
@@ -58,8 +78,22 @@ public class PersonEntity implements Persistable<UUID> {
         entity.setEmail(email);
         entity.setPhone(phone);
         entity.setPersonType(personType);
+        entity.setClientNumber(clientNumber);
+        entity.setMembershipDate(membershipDate);
+        entity.setPosition(position);
+        entity.setArea(area);
+        entity.setCostCenter(costCenter);
+        entity.setContractType(contractType);
         entity.setCreatedAt(createdAt);
         return entity;
+    }
+
+    public static PersonEntity create(UUID id, String name, String documentNumber,
+                                      String documentType, String email,
+                                      String phone, String personType, LocalDateTime createdAt) {
+        return create(id, name, documentNumber, documentType, email, phone, personType,
+                TextHelper.EMPTY, null, TextHelper.EMPTY, TextHelper.EMPTY,
+                TextHelper.EMPTY, TextHelper.EMPTY, createdAt);
     }
 
     public static PersonEntity create(String name, String documentNumber,
@@ -89,6 +123,24 @@ public class PersonEntity implements Persistable<UUID> {
 
     public String getPersonType() { return TextHelper.applyTrim(personType); }
     public void setPersonType(String personType) { this.personType = TextHelper.applyTrim(personType); }
+
+    public String getClientNumber() { return TextHelper.applyTrim(clientNumber); }
+    public void setClientNumber(String clientNumber) { this.clientNumber = TextHelper.applyTrim(clientNumber); }
+
+    public LocalDate getMembershipDate() { return membershipDate; }
+    public void setMembershipDate(LocalDate membershipDate) { this.membershipDate = membershipDate; }
+
+    public String getPosition() { return TextHelper.applyTrim(position); }
+    public void setPosition(String position) { this.position = TextHelper.applyTrim(position); }
+
+    public String getArea() { return TextHelper.applyTrim(area); }
+    public void setArea(String area) { this.area = TextHelper.applyTrim(area); }
+
+    public String getCostCenter() { return TextHelper.applyTrim(costCenter); }
+    public void setCostCenter(String costCenter) { this.costCenter = TextHelper.applyTrim(costCenter); }
+
+    public String getContractType() { return TextHelper.applyTrim(contractType); }
+    public void setContractType(String contractType) { this.contractType = TextHelper.applyTrim(contractType); }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = ObjectHelper.getDefault(createdAt, LocalDateTime.now()); }

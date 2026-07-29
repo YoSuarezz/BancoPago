@@ -18,8 +18,15 @@ Postgres + Redis run via `docker-compose.yml`, and backend tests use Testcontain
 - The committed `mvnw` may lack the executable bit; the update script `chmod +x` it, otherwise use `sh mvnw`.
 - Tests: `./mvnw test` (36 domain + context-load tests; the context-load test spins up an ephemeral Testcontainers Postgres, so Docker must be running).
 
-### Spring Security default auth (no `SecurityConfig` yet)
-Only `/actuator/**` health is open. `/api-docs` and `/swagger-ui.html` require HTTP Basic auth using username `user` and the **generated password printed in the backend log on each startup** (grep `Using generated security password`). In a browser the Swagger UI shows "Failed to load remote configuration" because its async config fetch is unauthenticated under the default security setup — expected until a real `SecurityConfig` is added; the raw `/api-docs` JSON loads fine with Basic auth.
+### Spring Security (`SecurityConfig` — permitAll local)
+`infrastructure/secondaryadapters/config/SecurityConfig` opens `/api/**`, `/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`, `/actuator/health`, and `/actuator/info` (CSRF off; HTTP Basic and form login disabled). No generated password. JWT auth is out of scope for now — tighten `authorizeExchange` when it lands. Swagger UI: `http://localhost:8080/swagger-ui.html`.
+
+### API responses (Module 1)
+- Success envelope: `ApiResponse` with Spanish messages from `infrastructure/ResponseMessages` (do not hardcode strings in controllers).
+- Person responses are sealed Client/Employee DTOs (`@JsonInclude(NON_NULL)`).
+- Flyway: V1 schema, V2 person subtype columns, V3 document uniqueness `(document_type, document_number)`. If checksum mismatch locally: `docker compose down -v` then `up -d` (destructive).
+- CreatePerson: CLIENT requires `clientNumber`; EMPLOYEE requires `position` + `area` (domain). Jakarta: `@Email` + `@Size(max=100)` on name.
+- CreateAccount: max 5 accounts/owner; max 1 non-INACTIVE account of the same type per owner.
 
 ### Frontend
 - Run: `cd frontend && npm start` (ng serve, `http://localhost:4200`). Tests: `npm test` (Jest via `jest-preset-angular`).

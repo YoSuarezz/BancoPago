@@ -160,7 +160,7 @@ public record CreateAccountResponse(
 `application/primaryports/mapper/{module}/`
 
 - Domain→Response 1:1 puro → `interface` MapStruct (`AccountDTOMapper`)
-- Request→Domain con herencia/VOs → `abstract class` + método concreto (`PersonDTOMapper.toDomain`)
+- Request→Domain con herencia/VOs → `abstract class` + método concreto (`PersonDTOMapper.toPersonDomain`)
 - Entity↔Domain: **manual** (no MapStruct)
 - No crear Assembler/Factory globales; solo si un Response combina varios agregados
 
@@ -205,11 +205,13 @@ public class UniqueAccountNumberRuleImpl implements UniqueAccountNumberRule {
 public class CreateAccountRulesValidatorImpl implements CreateAccountRulesValidator {
     private final OwnerExistsRule ownerExistsRule;
     private final MaxAccountsPerOwnerRule maxAccountsPerOwnerRule;
+    private final UniqueAccountTypePerOwnerRule uniqueAccountTypePerOwnerRule;
     private final UniqueAccountNumberRule uniqueAccountNumberRule;
 
     public Mono<Void> validate(AccountDomain account) {
         return ownerExistsRule.validate(account.getOwnerId())
             .then(maxAccountsPerOwnerRule.validate(account.getOwnerId()))
+            .then(uniqueAccountTypePerOwnerRule.validate(account))
             .then(uniqueAccountNumberRule.validate(account.getNumber()));
     }
 }
@@ -217,8 +219,8 @@ public class CreateAccountRulesValidatorImpl implements CreateAccountRulesValida
 
 | Tipo | Dónde |
 |------|--------|
-| Email formato / nombre / close con saldo 0 | Dominio (VO / entidad) |
-| Documento único, email único, owner existe, máx. cuentas | `*Rule` + `*RuleImpl` orquestados por RulesValidator |
+| Email formato / nombre / clientNumber / position+area / close con saldo 0 | Dominio (VO / entidad) |
+| Documento único, email único, owner existe, máx. cuentas, 1 tipo por owner | `*Rule` + `*RuleImpl` orquestados por RulesValidator |
 | Cuenta/persona no encontrada al cargar | UseCase (`find` + `switchIfEmpty` → `*NotFoundException`) |
 | Transición de estado inválida / close con saldo | Dominio (`block`/`unblock`/`close`) |
 
@@ -270,7 +272,7 @@ public class CreatePersonInteractorImpl implements CreatePersonInteractor {
 
     @Override
     public Mono<CreatePersonResponse> execute(CreatePersonRequest request) {
-        var domain = personDTOMapper.toDomain(request);
+        var domain = personDTOMapper.toPersonDomain(request);
         return createPersonUseCase.execute(domain)
             .map(personDTOMapper::toCreatePersonResponse);
     }
@@ -283,7 +285,9 @@ CreateAccount: el Interactor genera el número (`AccountNumberGenerator`), const
 
 ## 11. Paso 10 — Response wrapper + Controller
 
-`infrastructure/primaryadapters/adapter/response/` — `Response<T>`, `ApiResponse<T>`, wrappers de módulo.
+`infrastructure/primaryadapters/adapter/response/` — `Response<T>`, `ApiResponse<T>` (envelope HTTP).
+
+`infrastructure/ResponseMessages.java` — constantes `static final` para mensajes de éxito en español. **No quemar literales** en el controller.
 
 `infrastructure/primaryadapters/controller/{module}/`
 
@@ -291,22 +295,38 @@ CreateAccount: el Interactor genera el número (`AccountNumberGenerator`), const
 - `@Valid` en el body.
 - Errores → `GlobalExceptionHandler`.
 - Envuelve el DTO en `ApiResponse` / `*Response` al cliente.
+- Mensajes de éxito: `ApiResponse.of(dto, ResponseMessages.ACCOUNT_CREATED)`.
 
 ```java
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
     private final CreateAccountInteractor createAccountInteractor;
+    private final BlockAccountInteractor blockAccountInteractor;
+    // + GetAccountBalance, UnblockAccount, CloseAccount
 
     @PostMapping
-    public Mono<ResponseEntity<ApiResponse<CreateAccountResponse>>> create(
+    public Mono<ResponseEntity<ApiResponse<CreateAccountResponse>>> createAccount(
             @RequestBody @Valid CreateAccountRequest request) {
         return createAccountInteractor.execute(request)
-            .map(ApiResponse::of)
+            .map(dto -> ApiResponse.of(dto, ResponseMessages.ACCOUNT_CREATED))
             .map(body -> ResponseEntity.status(HttpStatus.CREATED).body(body));
+    }
+
+    @PostMapping("/{id}/block")
+    public Mono<ResponseEntity<ApiResponse<AccountStatusResponse>>> blockAccount(@PathVariable UUID id) {
+        return blockAccountInteractor.execute(id)
+            .map(dto -> ApiResponse.of(dto, ResponseMessages.ACCOUNT_BLOCKED))
+            .map(ResponseEntity::ok);
     }
 }
 ```
+
+Métodos del controller: nombres explícitos (`createAccount`, `getAccountBalance`, `blockAccount`) — mismo criterio que repos (`saveAccount`). Rutas REST: sustantivos plurales + verbo HTTP; acciones de estado como `POST .../block|unblock|close` (no `PATCH .../estado`). Persons: `POST/GET /api/v1/persons`. Seguridad local: `SecurityConfig` permitAll (JWT después).
+
+**DTOs de respuesta Person:** sealed interfaces (`CreatePersonResponse`, `GetPersonByIdResponse`) con implementaciones Client/Employee; omitir nulls con `@JsonInclude(NON_NULL)`. `AccountStatusResponse` mínimo: `id`, `number`, `status`, `balance`.
+
+Jakarta en `CreatePersonRequest`: `@NotBlank` + `@Size(max=100)` en name; `@NotBlank` + `@Email` en email.
 
 ---
 
@@ -323,6 +343,13 @@ public class AccountController {
 ## 13. Paso 12 — Migración Flyway
 
 `src/main/resources/db/migration/V{n}__{description}.sql` — tablas/columnas en inglés.
+
+Módulo 1 actual:
+- **V1** — `person` + `account`
+- **V2** — campos de subtipo Person (`client_number`, `membership_date`, `position`, `area`, `cost_center`, `contract_type`)
+- **V3** — unicidad documento `(document_type, document_number)` + `document_number VARCHAR(30)` (alineado con VO y `UniqueDocumentRule`)
+
+Si hay mismatch de checksum Flyway en local: `docker compose down -v` y recrear (destructivo).
 
 ---
 

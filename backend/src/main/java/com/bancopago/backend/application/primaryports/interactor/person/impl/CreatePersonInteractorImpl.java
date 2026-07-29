@@ -22,7 +22,7 @@ public class CreatePersonInteractorImpl implements CreatePersonInteractor {
 
     @Override
     public Mono<CreatePersonResponse> execute(CreatePersonRequest request) {
-        var domain = personDTOMapper.toDomain(request);
+        var domain = personDTOMapper.toPersonDomain(request);
         return createPersonUseCase.execute(domain)
                 .map(personDTOMapper::toCreatePersonResponse);
     }

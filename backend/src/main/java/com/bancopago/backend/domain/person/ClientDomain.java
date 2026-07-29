@@ -1,6 +1,8 @@
 package com.bancopago.backend.domain.person;
 
+import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.enums.PersonType;
+import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
 
@@ -16,13 +18,21 @@ public class ClientDomain extends PersonDomain {
                         Email email, String phone,
                         String clientNumber, LocalDate membershipDate) {
         super(id, documentNumber, name, email, phone, PersonType.CLIENT);
-        this.clientNumber = clientNumber;
+        this.clientNumber = requireClientNumber(clientNumber);
         this.membershipDate = membershipDate != null ? membershipDate : LocalDate.now();
     }
 
     public ClientDomain(String name, DocumentNumber documentNumber,
                         Email email, String phone, String clientNumber) {
         this(null, documentNumber, name, email, phone, clientNumber, LocalDate.now());
+    }
+
+    private static String requireClientNumber(String clientNumber) {
+        var trimmed = TextHelper.applyTrim(clientNumber);
+        if (TextHelper.isBlank(trimmed)) {
+            throw InvalidPersonException.create(PersonError.CLIENT_NUMBER_REQUIRED);
+        }
+        return trimmed;
     }
 
     public String getClientNumber() { return clientNumber; }
