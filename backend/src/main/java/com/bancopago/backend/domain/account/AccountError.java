@@ -11,7 +11,13 @@ public enum AccountError implements ErrorCode {
     INSUFFICIENT_BALANCE("Saldo insuficiente: actual=%s, requerido=%s"),
     BLOCKED("La cuenta %s se encuentra bloqueada"),
     INVALID_STATE("No se puede ejecutar '%s' en la cuenta %s con estado %s"),
-    CURRENCY_MISMATCH("No se puede operar monedas diferentes: %s con %s");
+    OPERATION_NOT_ALLOWED("La operación '%s' no está permitida para cambio de estado de cuenta"),
+    CURRENCY_MISMATCH("No se puede operar monedas diferentes: %s con %s"),
+    NOT_FOUND("No se encontró la cuenta con id %s"),
+    NUMBER_ALREADY_EXISTS("Ya existe una cuenta con el número %s"),
+    OWNER_NOT_FOUND("No se encontró el propietario de la cuenta con id %s"),
+    CLOSE_WITH_BALANCE("No se puede cerrar la cuenta %s con saldo %s. El saldo debe ser cero"),
+    MAX_ACCOUNTS_EXCEEDED("El propietario %s ya alcanzó el máximo de %d cuentas permitidas");
 
     private final String messageTemplate;
 

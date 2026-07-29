@@ -53,4 +53,14 @@ public class PersonR2dbcAdapter implements PersonRepository {
     public Mono<Boolean> existsPersonByDocument(String documentNumber) {
         return personR2dbcRepository.existsByDocumentNumber(documentNumber);
     }
+
+    @Override
+    public Mono<Boolean> existsPersonByDocument(String documentNumber, String documentType) {
+        return personR2dbcRepository.existsByDocumentNumberAndDocumentType(documentNumber, documentType);
+    }
+
+    @Override
+    public Mono<Boolean> existsPersonByEmail(String email) {
+        return personR2dbcRepository.existsByEmailIgnoreCase(email);
+    }
 }

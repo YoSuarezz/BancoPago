@@ -13,6 +13,8 @@ import java.util.UUID;
 
 public abstract class PersonDomain extends BaseDomain {
 
+    private static final int MAX_NAME_LENGTH = 100;
+
     private final DocumentNumber documentNumber;
     private final String name;
     private final Email email;
@@ -33,6 +35,9 @@ public abstract class PersonDomain extends BaseDomain {
         var trimmed = TextHelper.applyTrim(name);
         if (TextHelper.isBlank(trimmed)) {
             throw InvalidPersonException.create(PersonError.NAME_EMPTY);
+        }
+        if (trimmed.length() > MAX_NAME_LENGTH) {
+            throw InvalidPersonException.create(PersonError.NAME_EXCEEDED, MAX_NAME_LENGTH);
         }
         return trimmed;
     }
