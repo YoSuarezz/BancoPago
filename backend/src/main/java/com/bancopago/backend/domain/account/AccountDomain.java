@@ -68,6 +68,9 @@ public class AccountDomain extends BaseDomain {
         if (this.status == AccountStatus.INACTIVE) {
             throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.CLOSE);
         }
+        if (this.balance.amount().compareTo(BigDecimal.ZERO) > 0) {
+            throw InvalidAccountException.create(AccountError.CLOSE_WITH_BALANCE, getId(), this.balance.amount());
+        }
         this.status = AccountStatus.INACTIVE;
     }
 

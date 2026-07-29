@@ -14,4 +14,8 @@ public interface PersonRepository {
     Mono<PersonDomain> findPersonByDocument(String documentNumber, String documentType);
 
     Mono<Boolean> existsPersonByDocument(String documentNumber);
+
+    Mono<Boolean> existsPersonByDocument(String documentNumber, String documentType);
+
+    Mono<Boolean> existsPersonByEmail(String email);
 }

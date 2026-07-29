@@ -20,8 +20,13 @@ Pagos Digitales.
 
 ## Arquitectura
 
-Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para detalles de Clean Architecture,
-diagramas ER y decisiones técnicas.
+Clean Architecture + WebFlux. Flujo:
+
+`Controller → Interactor → UseCase → RulesValidator (+ Rule) + Repository`
+
+- [Arquitectura (visión y flujo)](docs/ARCHITECTURE.md)
+- [Decisiones y convenciones](docs/ARCHITECTURE_DECISIONS.md)
+- [Guía de implementación](docs/IMPLEMENTATION_GUIDE.md)
 
 ## Cómo ejecutar localmente
 
@@ -51,10 +56,12 @@ ng serve
 
 ## Documentación
 
-- [Arquitectura y Diseño](docs/ARCHITECTURE.md)
-- [Guía de Implementación](docs/IMPLEMENTATION_GUIDE.md)
-- [Hoja de Ruta](docs/ROADMAP.md)
-- [Guía de Contribución](CONTRIBUTING.md)
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Decisiones de arquitectura](docs/ARCHITECTURE_DECISIONS.md)
+- [Guía de implementación](docs/IMPLEMENTATION_GUIDE.md)
+- [Hoja de ruta](docs/ROADMAP.md)
+- [Plantilla de issues](docs/ISSUE_TEMPLATE.md)
+- [Guía de contribución](CONTRIBUTING.md)
 
 ## Licencia
 

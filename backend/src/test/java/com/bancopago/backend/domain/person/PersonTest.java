@@ -58,6 +58,17 @@ class PersonTest {
         }
 
         @Test
+        @DisplayName("should throw exception when name exceeds max length")
+        void shouldThrowExceptionWhenNameExceedsMaxLength() {
+            var document = new DocumentNumber(DocumentType.CC, "1234567890");
+            var email = new Email("juan@email.com");
+            var tooLong = "A".repeat(101);
+            assertThrows(InvalidPersonException.class, () ->
+                    new ClientDomain(tooLong, document, email, "3001234567", "CLI-001")
+            );
+        }
+
+        @Test
         @DisplayName("should throw exception when email is invalid")
         void shouldThrowExceptionWhenEmailIsInvalid() {
             assertThrows(InvalidPersonException.class, () ->

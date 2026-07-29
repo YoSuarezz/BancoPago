@@ -15,10 +15,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Mapper manual: {@link PersonDomain} es abstracta (Client/Employee) y los campos de subclase
- * aún no viven en la tabla {@code person}, por eso se reconstituyen con defaults seguros.
- */
 @Component
 public class PersonEntityMapper {
 

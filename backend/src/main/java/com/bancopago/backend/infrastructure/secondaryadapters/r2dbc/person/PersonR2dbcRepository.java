@@ -13,4 +13,8 @@ public interface PersonR2dbcRepository extends R2dbcRepository<PersonEntity, UUI
     Mono<PersonEntity> findByDocumentNumberAndDocumentType(String documentNumber, String documentType);
 
     Mono<Boolean> existsByDocumentNumber(String documentNumber);
+
+    Mono<Boolean> existsByDocumentNumberAndDocumentType(String documentNumber, String documentType);
+
+    Mono<Boolean> existsByEmailIgnoreCase(String email);
 }
