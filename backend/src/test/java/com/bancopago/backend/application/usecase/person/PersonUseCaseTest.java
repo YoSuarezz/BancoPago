@@ -55,7 +55,7 @@ class PersonUseCaseTest {
         when(rulesValidator.validate(domain)).thenReturn(Mono.empty());
         when(personRepository.savePerson(domain)).thenReturn(Mono.just(domain));
 
-        StepVerifier.create(createPersonUseCase.createPerson(domain))
+        StepVerifier.create(createPersonUseCase.execute(domain))
                 .assertNext(result -> {
                     assertEquals("Ana Gomez", result.getName());
                     assertEquals("100200300", result.getDocument());
@@ -77,7 +77,7 @@ class PersonUseCaseTest {
         when(rulesValidator.validate(domain))
                 .thenReturn(Mono.error(DuplicateDocumentException.create("100200300")));
 
-        StepVerifier.create(createPersonUseCase.createPerson(domain))
+        StepVerifier.create(createPersonUseCase.execute(domain))
                 .expectError(DuplicateDocumentException.class)
                 .verify();
     }
@@ -88,7 +88,7 @@ class PersonUseCaseTest {
         UUID missingId = UUID.randomUUID();
         when(personRepository.findPersonById(missingId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(getPersonByIdUseCase.getPersonById(missingId))
+        StepVerifier.create(getPersonByIdUseCase.execute(missingId))
                 .expectError(PersonNotFoundException.class)
                 .verify();
     }
@@ -105,7 +105,7 @@ class PersonUseCaseTest {
         );
         when(personRepository.findPersonById(domain.getId())).thenReturn(Mono.just(domain));
 
-        StepVerifier.create(getPersonByIdUseCase.getPersonById(domain.getId()))
+        StepVerifier.create(getPersonByIdUseCase.execute(domain.getId()))
                 .assertNext(result -> assertEquals(domain.getId(), result.getId()))
                 .verifyComplete();
     }

@@ -3,7 +3,7 @@ package com.bancopago.backend.application.primaryports.dto.account.response;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record ChangeAccountStatusResponse(
+public record AccountStatusResponse(
         UUID id,
         UUID ownerId,
         String number,

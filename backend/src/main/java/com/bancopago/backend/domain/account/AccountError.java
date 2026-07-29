@@ -11,7 +11,6 @@ public enum AccountError implements ErrorCode {
     INSUFFICIENT_BALANCE("Saldo insuficiente: actual=%s, requerido=%s"),
     BLOCKED("La cuenta %s se encuentra bloqueada"),
     INVALID_STATE("No se puede ejecutar '%s' en la cuenta %s con estado %s"),
-    OPERATION_NOT_ALLOWED("La operación '%s' no está permitida para cambio de estado de cuenta"),
     CURRENCY_MISMATCH("No se puede operar monedas diferentes: %s con %s"),
     NOT_FOUND("No se encontró la cuenta con id %s"),
     NUMBER_ALREADY_EXISTS("Ya existe una cuenta con el número %s"),

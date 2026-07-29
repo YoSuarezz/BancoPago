@@ -5,10 +5,10 @@ import com.bancopago.backend.application.primaryports.dto.person.response.Create
 import com.bancopago.backend.application.primaryports.interactor.person.CreatePersonInteractor;
 import com.bancopago.backend.application.primaryports.mapper.person.PersonDTOMapper;
 import com.bancopago.backend.application.usecase.person.CreatePersonUseCase;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Component
+@Service
 public class CreatePersonInteractorImpl implements CreatePersonInteractor {
 
     private final CreatePersonUseCase createPersonUseCase;
@@ -21,9 +21,9 @@ public class CreatePersonInteractorImpl implements CreatePersonInteractor {
     }
 
     @Override
-    public Mono<CreatePersonResponse> createPerson(CreatePersonRequest request) {
+    public Mono<CreatePersonResponse> execute(CreatePersonRequest request) {
         var domain = personDTOMapper.toDomain(request);
-        return createPersonUseCase.createPerson(domain)
+        return createPersonUseCase.execute(domain)
                 .map(personDTOMapper::toCreatePersonResponse);
     }
 }

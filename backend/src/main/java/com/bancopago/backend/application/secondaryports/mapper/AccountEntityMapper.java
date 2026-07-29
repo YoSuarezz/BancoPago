@@ -14,9 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Mapper manual: el dominio usa VOs y enums, mientras la persistencia almacena columnas planas.
- */
 @Component
 public class AccountEntityMapper {
 

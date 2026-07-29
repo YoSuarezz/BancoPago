@@ -2,7 +2,7 @@
 
 *Versión: 2.0*
 *Última actualización: Julio 2026*
-*Idioma: Español (documentación), columnas BD en español, mensajes de error en español*
+*Idioma: Español (documentación), columnas BD en inglés, mensajes de error en español*
 
 ---
 
@@ -91,22 +91,26 @@ backend/src/main/java/com/bancopago/backend/
 │   │   ├── entity/                       # Entidades R2DBC @Table
 │   │   ├── repository/                   # Puertos de repositorio reactivos
 │   │   └── mapper/                       # Mapeo manual Entity ↔ Domain
-│   ├── Rule.java                         # Regla granular reutilizable (Mono<Void>)
-│   ├── RulesValidator.java
-│   └── usecase/{module}/
-│       ├── {UseCase}.java + impl/
-│       └── rulesvalidator/(+ impl/ + rules/)  # RulesValidator; Rule en rules/ si 2+
+│   └── usecase/
+│       ├── Rule.java                     # Regla granular (Mono<Void>)
+│       ├── RulesValidator.java
+│       ├── UseCaseWithReturn.java        # base genérica técnica
+│       └── {module}/
+│           ├── {UseCase}.java + impl/
+│           └── rulesvalidator/(+ impl/ + rules/)  # RulesValidator; Rule en rules/
 │
 ├── infrastructure/
 │   ├── primaryadapters/
 │   │   ├── controller/{module}/          # Controladores REST con @Valid
-│   │   └── adapter/response/             # Wrapper GenericResponse
+│   │   └── adapter/response/             # Response / ApiResponse / PersonResponse / AccountResponse
 │   ├── secondaryadapters/
-│   │   └── config/                       # Beans, seguridad, etc.
+│   │   └── r2dbc/
+│   │       ├── {module}/                 # Adapter + Spring Data repo
+│   │       └── config/                   # Persistable callbacks, etc.
 │   └── GlobalExceptionHandler.java       # DomainException → HTTP status
 │
 └── resources/
-    └── db/migration/                     # Flyway SQL (nombres de tablas en español)
+    └── db/migration/                     # Flyway SQL (tablas/columnas en inglés)
 ```
 
 ---
@@ -282,14 +286,22 @@ En Clean Architecture clásica *Interactor* y *UseCase* son el mismo concepto. A
 - `*UseCase` + `*UseCaseImpl` = lógica de aplicación.
 - `*InteractorImpl` es un adaptador delgado (hoy solo delega; mañana puede sumar tracing/métricas sin tocar el use case).
 
-**¿`execute` o `getAccountBalance`?**  
-Ambos enfoques existen en la industria:
+**Convención de este proyecto (patrón guía):** la interfaz concreta es **vacía** y solo extiende la base; el nombre de la clase expresa la operación; la impl implementa `execute`:
 
-- `execute(...)`: válido cuando el **nombre de la clase** ya dice la operación (`GetAccountBalanceUseCase.execute`).
-- Método explícito: preferible al leer código (`interactor.getAccountBalance(id)`).
+```java
+public interface CreatePersonUseCase
+        extends UseCaseWithReturn<PersonDomain, PersonDomain> {
+}
 
-**Convención de este proyecto:** método de negocio explícito en interfaces **concretas** (`createAccount`, `getAccountBalance`).  
-`execute` queda **solo** en las interfaces genéricas técnicas (`UseCaseWithReturn`, `InteractorWithReturn`), no como API pública del caso de uso concreto.
+@Service
+public class CreatePersonUseCaseImpl implements CreatePersonUseCase {
+    @Override
+    public Mono<PersonDomain> execute(PersonDomain person) { ... }
+}
+```
+
+Lo mismo aplica a Interactors con `InteractorWithReturn` (DTO o identidad in/out).  
+Operaciones de estado de cuenta son use cases separados (`BlockAccount`, `UnblockAccount`, `CloseAccount`), cada uno con `UUID` de entrada.
 
 ### 3.6.1 RulesValidator orquesta `Rule`s con estado
 
@@ -324,34 +336,38 @@ public Mono<Void> validate(AccountDomain account) {
 
 Ubicación: `rulesvalidator/rules/` (interfaces) + `rules/impl/` (implementaciones). Nunca en `domain/`.
 
-Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountNumberRule`, `AllowedAccountStatusOperationRule`.
+Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountNumberRule`.
+Block/Unblock/Close no usan RulesValidator: cargan la cuenta, aplican el método de dominio y guardan.
 
 ### 3.7 Patrón de Use Case (Reactivo) — ejemplo
 
 ```java
+public interface CreateAccountUseCase
+        extends UseCaseWithReturn<AccountDomain, AccountDomain> {
+}
+
 @Service
 public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 
     private final AccountRepository accountRepository;
-    private final AccountNumberGenerator accountNumberGenerator;
     private final CreateAccountRulesValidator rulesValidator;
 
-    public Mono<AccountDomain> createAccount(UUID ownerId, AccountType type) {
-        return rulesValidator.validateOwnerExists(ownerId)
-            .then(Mono.defer(accountNumberGenerator::generateUniqueAccountNumber))
-            .map(number -> new AccountDomain(ownerId, number, type))
-            .flatMap(account -> rulesValidator.validate(account)
-                .then(Mono.defer(() -> accountRepository.saveAccount(account))));
+    @Override
+    public Mono<AccountDomain> execute(AccountDomain account) {
+        return rulesValidator.validate(account)
+            .then(Mono.defer(() -> accountRepository.saveAccount(account)));
     }
 }
 ```
 
+El número de cuenta se genera en el **Interactor** (arma `AccountDomain` completo) antes de `useCase.execute(domain)`.
+
 ### 3.8 MapStruct DTO (en el Interactor)
 
 - El **Interactor** usa `*DTOMapper`: Request→Domain (si aplica) y Domain→Response.
-- Preferir métodos **abstract** solo para Domain→Response 1:1 (`AccountDTOMapper`).
-- Request→Domain con herencia/VOs: método concreto (`PersonDTOMapper.toDomain`).
-- CreateAccount construye el dominio en el UseCase (`new AccountDomain`); el mapper de Account es solo Domain→Response.
+- Domain→Response 1:1 puro → `interface` MapStruct (`AccountDTOMapper`).
+- Request→Domain con herencia/VOs → `abstract class` con método concreto (`PersonDTOMapper.toDomain`).
+- CreateAccount: Interactor genera número + `new AccountDomain`; mapper de Account solo Domain→Response.
 - El **UseCase** no importa DTOs ni mappers de DTO.
 - Entity↔Domain sigue manual en el Adapter.
 
@@ -390,7 +406,8 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 | DTO Response | PascalCase + `Response` | `AccountResponse` |
 | Paquetes | minusculas.singular | `domain.account`, `application.service` |
 | Métodos de repositorio (puerto) | `verb` + `Entity` + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
-| Métodos de use case / interactor (API concreta) | `verb` + sujeto de negocio | `createAccount`, `getAccountBalance`, `blockAccount`, `changeAccountStatus` |
+| Interfaces use case / interactor | PascalCase + operación | `CreateAccountUseCase`, `CreateAccountInteractor` |
+| Método UseCase / Interactor | `execute` (de la base) | `useCase.execute(domain)`, `interactor.execute(request)` |
 | Métodos genéricos técnicos (`UseCase*` / `Interactor*`) | `execute` solo en interfaces genéricas | No exponer `execute` como API pública del use case concreto |
 | Constantes | UPPER_SNAKE_CASE | `MAX_CONCURRENCY`, `DEFAULT_CURRENCY` |
 
@@ -402,7 +419,7 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
 - **Helpers:** `TextHelper.applyTrim()`, `ObjectHelper.getDefault()`, `ObjectHelper.requireNonNull()`.
 - **MapStruct** preferente para Domain→Response. Request→Domain rico y Entity↔Domain: manual. Sin Assembler/Factory globales por defecto.
 - **Sin `if (x == null)`** — usar `TextHelper.isBlank()` o `ObjectHelper.requireNonNull()`.
-- **Nombres de métodos explícitos** en interactors/use cases/repos concretos (`createAccount`, `getAccountBalance`). `execute` solo en interfaces genéricas.
+- **UseCase / Interactor:** interfaz vacía que extiende la base; impl con `execute`. Repos concretos mantienen métodos explícitos (`saveAccount`, `findAccountById`).
 - **RulesValidator** concentra reglas con acceso a repositorio; el UseCase solo orquesta.
 - **Comentarios:** solo cuando aportan el *porqué* (no narrar el código). En español.
 
@@ -431,16 +448,19 @@ class AccountTest {
 **Tests de aplicación (con StepVerifier):**
 ```java
 @ExtendWith(MockitoExtension.class)
-class CreateAccountUseCaseTest {
+class AccountUseCaseTest {
     @Mock AccountRepository accountRepository;
-    @Mock PersonRepository personRepository;
-    @InjectMocks CreateAccountUseCaseImpl useCase;
+    @Mock CreateAccountRulesValidator createAccountRulesValidator;
 
     @Test
-    void shouldCreateAccountWhenValid() {
-        when(personRepository.findPersonById(any())).thenReturn(Mono.just(client));
-        StepVerifier.create(useCase.createAccount(request))
-            .assertNext(response -> assertEquals("001-123", response.number()))
+    void shouldCreateAccountWhenOwnerExists() {
+        when(createAccountRulesValidator.validate(any(AccountDomain.class))).thenReturn(Mono.empty());
+        when(accountRepository.saveAccount(any(AccountDomain.class)))
+            .thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+        var account = new AccountDomain(ownerId, new AccountNumber("1234567890"), AccountType.SAVINGS);
+        StepVerifier.create(useCase.execute(account))
+            .assertNext(result -> assertEquals("1234567890", result.getNumber()))
             .verifyComplete();
     }
 }
@@ -485,11 +505,10 @@ Cada implementación de funcionalidad se mapea a un slice vertical a través de 
 
 **Ejemplo concreto — estado actual:**
 
-El primer módulo (Cuentas y Usuarios) está completo hasta las capas 1-4 (crosscutting → domain → application/secondaryports → infrastructure/entities). Lo que falta:
+Módulo 1 (Person + Account): domain, secondary ports, R2DBC adapters, DTOs, mappers, Interactors, UseCases, RulesValidators y Rules están implementados. Pendiente:
 
 | Issue | Capas Necesarias |
 |-------|------------------|
-| `CreateAccount` use case + controller | application/usecase + infrastructure/controller |
-| `Block/Unblock/Close` account endpoints | application/usecase + infrastructure/controller |
+| Controllers + GlobalExceptionHandler | infrastructure/primaryadapters |
 | SSE balance stream | application/usecase + infrastructure/controller |
 | Angular dashboard | frontend/ |

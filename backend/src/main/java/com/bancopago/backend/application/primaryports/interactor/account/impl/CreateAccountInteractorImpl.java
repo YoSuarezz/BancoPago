@@ -4,31 +4,32 @@ import com.bancopago.backend.application.primaryports.dto.account.request.Create
 import com.bancopago.backend.application.primaryports.dto.account.response.CreateAccountResponse;
 import com.bancopago.backend.application.primaryports.interactor.account.CreateAccountInteractor;
 import com.bancopago.backend.application.primaryports.mapper.account.AccountDTOMapper;
-import com.bancopago.backend.application.usecase.account.CreateAccountCommand;
+import com.bancopago.backend.application.usecase.account.AccountNumberGenerator;
 import com.bancopago.backend.application.usecase.account.CreateAccountUseCase;
-import org.springframework.stereotype.Component;
+import com.bancopago.backend.domain.account.AccountDomain;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-/**
- * DTO → Command de aplicación → UseCase → Domain → Response.
- * No construye AccountDomain aquí: el número se genera en el UseCase.
- */
-@Component
+@Service
 public class CreateAccountInteractorImpl implements CreateAccountInteractor {
 
     private final CreateAccountUseCase createAccountUseCase;
+    private final AccountNumberGenerator accountNumberGenerator;
     private final AccountDTOMapper accountDTOMapper;
 
     public CreateAccountInteractorImpl(CreateAccountUseCase createAccountUseCase,
+                                       AccountNumberGenerator accountNumberGenerator,
                                        AccountDTOMapper accountDTOMapper) {
         this.createAccountUseCase = createAccountUseCase;
+        this.accountNumberGenerator = accountNumberGenerator;
         this.accountDTOMapper = accountDTOMapper;
     }
 
     @Override
-    public Mono<CreateAccountResponse> createAccount(CreateAccountRequest request) {
-        var command = new CreateAccountCommand(request.ownerId(), request.type());
-        return createAccountUseCase.createAccount(command)
+    public Mono<CreateAccountResponse> execute(CreateAccountRequest request) {
+        return accountNumberGenerator.generateUniqueAccountNumber()
+                .map(number -> new AccountDomain(request.ownerId(), number, request.type()))
+                .flatMap(createAccountUseCase::execute)
                 .map(accountDTOMapper::toCreateAccountResponse);
     }
 }

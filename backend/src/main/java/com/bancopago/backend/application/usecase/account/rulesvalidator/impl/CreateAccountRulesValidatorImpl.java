@@ -8,10 +8,6 @@ import com.bancopago.backend.domain.account.AccountDomain;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-/**
- * Orquesta las {@link com.bancopago.backend.application.usecase.Rule} con estado
- * del caso CreateAccount. No contiene lógica de repositorio: solo las ejecuta.
- */
 @Component
 public class CreateAccountRulesValidatorImpl implements CreateAccountRulesValidator {
 

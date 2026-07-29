@@ -20,7 +20,7 @@ public class CreatePersonUseCaseImpl implements CreatePersonUseCase {
     }
 
     @Override
-    public Mono<PersonDomain> createPerson(PersonDomain person) {
+    public Mono<PersonDomain> execute(PersonDomain person) {
         return rulesValidator.validate(person)
                 .then(Mono.defer(() -> personRepository.savePerson(person)));
     }

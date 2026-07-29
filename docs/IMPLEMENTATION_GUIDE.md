@@ -121,8 +121,8 @@ public interface AccountRepository {
 |-------|-----------|
 | Entity | `application/secondaryports/entity/` |
 | Mapper Entity↔Domain | `application/secondaryports/mapper/` (**manual**) |
-| Spring Data repo | `infrastructure/secondaryadapters/...` |
-| Adapter que implementa el puerto | `infrastructure/secondaryadapters/...` |
+| Spring Data repo | `infrastructure/secondaryadapters/r2dbc/{module}/` |
+| Adapter que implementa el puerto | `infrastructure/secondaryadapters/r2dbc/{module}/` |
 
 Entity: `@Table`, constructor antinulos, `create()` estáticos, setters con helpers.
 
@@ -159,18 +159,16 @@ public record CreateAccountResponse(
 
 `application/primaryports/mapper/{module}/`
 
-Usar `abstract class` con `@Mapper(componentModel = "spring")`:
-
-- métodos `abstract` → MapStruct genera (**Domain → Response** 1:1)
-- métodos concretos → Request→Domain con herencia/VOs (factory de aplicación, ej. `PersonDTOMapper.toDomain`)
+- Domain→Response 1:1 puro → `interface` MapStruct (`AccountDTOMapper`)
+- Request→Domain con herencia/VOs → `abstract class` + método concreto (`PersonDTOMapper.toDomain`)
 - Entity↔Domain: **manual** (no MapStruct)
 - No crear Assembler/Factory globales; solo si un Response combina varios agregados
 
 ```java
 @Mapper(componentModel = "spring")
-public abstract class AccountDTOMapper {
-    public abstract CreateAccountResponse toCreateAccountResponse(AccountDomain domain);
-    public abstract GetAccountBalanceResponse toGetAccountBalanceResponse(AccountDomain domain);
+public interface AccountDTOMapper {
+    CreateAccountResponse toCreateAccountResponse(AccountDomain domain);
+    GetAccountBalanceResponse toGetAccountBalanceResponse(AccountDomain domain);
 }
 ```
 
@@ -220,8 +218,9 @@ public class CreateAccountRulesValidatorImpl implements CreateAccountRulesValida
 | Tipo | Dónde |
 |------|--------|
 | Email formato / nombre / close con saldo 0 | Dominio (VO / entidad) |
-| Documento único, email único, owner existe, máx. cuentas, operación permitida en UC | `*Rule` + `*RuleImpl` orquestados por RulesValidator |
+| Documento único, email único, owner existe, máx. cuentas | `*Rule` + `*RuleImpl` orquestados por RulesValidator |
 | Cuenta/persona no encontrada al cargar | UseCase (`find` + `switchIfEmpty` → `*NotFoundException`) |
+| Transición de estado inválida / close con saldo | Dominio (`block`/`unblock`/`close`) |
 
 ---
 
@@ -229,15 +228,22 @@ public class CreateAccountRulesValidatorImpl implements CreateAccountRulesValida
 
 `application/usecase/{module}/` + `impl/`
 
-El UseCase **no conoce DTOs**. Recibe/devuelve Domain. Orquesta validator + repo.
+El UseCase **no conoce DTOs**. Recibe/devuelve Domain (o VO de dominio). Orquesta validator + repo.
+
+La interfaz concreta es **vacía** y solo extiende la base; la impl implementa `execute`:
 
 ```java
+public interface CreatePersonUseCase
+        extends UseCaseWithReturn<PersonDomain, PersonDomain> {
+}
+
 @Service
 public class CreatePersonUseCaseImpl implements CreatePersonUseCase {
     private final PersonRepository personRepository;
     private final CreatePersonRulesValidator rulesValidator;
 
-    public Mono<PersonDomain> createPerson(PersonDomain person) {
+    @Override
+    public Mono<PersonDomain> execute(PersonDomain person) {
         return rulesValidator.validate(person)
             .then(Mono.defer(() -> personRepository.savePerson(person)));
     }
@@ -250,31 +256,41 @@ public class CreatePersonUseCaseImpl implements CreatePersonUseCase {
 
 `application/primaryports/interactor/{module}/` + `impl/`
 
-Mapea Request→Domain, llama UseCase, mapea Domain→Response.
+Mapea Request→Domain, llama `useCase.execute`, mapea Domain→Response DTO.
 
 ```java
-@Component
+public interface CreatePersonInteractor
+        extends InteractorWithReturn<CreatePersonRequest, CreatePersonResponse> {
+}
+
+@Service
 public class CreatePersonInteractorImpl implements CreatePersonInteractor {
     private final CreatePersonUseCase createPersonUseCase;
     private final PersonDTOMapper personDTOMapper;
 
-    public Mono<CreatePersonResponse> createPerson(CreatePersonRequest request) {
+    @Override
+    public Mono<CreatePersonResponse> execute(CreatePersonRequest request) {
         var domain = personDTOMapper.toDomain(request);
-        return createPersonUseCase.createPerson(domain)
+        return createPersonUseCase.execute(domain)
             .map(personDTOMapper::toCreatePersonResponse);
     }
 }
 ```
 
+CreateAccount: el Interactor genera el número (`AccountNumberGenerator`), construye `AccountDomain` y llama `useCase.execute(domain)`.
+
 ---
 
-## 11. Paso 10 — Controller
+## 11. Paso 10 — Response wrapper + Controller
+
+`infrastructure/primaryadapters/adapter/response/` — `Response<T>`, `ApiResponse<T>`, wrappers de módulo.
 
 `infrastructure/primaryadapters/controller/{module}/`
 
 - Inyecta **Interactor** (no UseCase).
 - `@Valid` en el body.
 - Errores → `GlobalExceptionHandler`.
+- Envuelve el DTO en `ApiResponse` / `*Response` al cliente.
 
 ```java
 @RestController
@@ -283,9 +299,10 @@ public class AccountController {
     private final CreateAccountInteractor createAccountInteractor;
 
     @PostMapping
-    public Mono<ResponseEntity<CreateAccountResponse>> create(
+    public Mono<ResponseEntity<ApiResponse<CreateAccountResponse>>> create(
             @RequestBody @Valid CreateAccountRequest request) {
-        return createAccountInteractor.createAccount(request)
+        return createAccountInteractor.execute(request)
+            .map(ApiResponse::of)
             .map(body -> ResponseEntity.status(HttpStatus.CREATED).body(body));
     }
 }
@@ -343,7 +360,7 @@ Se revisó una guía de un proyecto similar (Clean Architecture, mismo layout de
 
 | Tema | Ellos | Nosotros |
 |------|-------|----------|
-| Contratos UC/Interactor | Varias bases (`WithoutInput`/`WithoutReturn`/`WithReturn`) | `UseCaseWithReturn<I,O>` / `InteractorWithReturn<I,O>` reactivos |
+| Contratos UC/Interactor | Bases + interfaz vacía + `ejecutar` | Bases + interfaz vacía + `execute` reactivo (`Mono`) |
 | DTOs | Mutables + helpers anti-nulos | `record` + Jakarta Validation |
 | Entity↔Domain | MapStruct siempre | Manual (VOs/herencia); MapStruct para DTO↔Domain |
 | Errores en Controller | `try-catch` por endpoint | `GlobalExceptionHandler` |

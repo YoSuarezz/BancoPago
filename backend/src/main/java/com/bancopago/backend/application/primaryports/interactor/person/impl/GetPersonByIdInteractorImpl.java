@@ -4,12 +4,12 @@ import com.bancopago.backend.application.primaryports.dto.person.response.GetPer
 import com.bancopago.backend.application.primaryports.interactor.person.GetPersonByIdInteractor;
 import com.bancopago.backend.application.primaryports.mapper.person.PersonDTOMapper;
 import com.bancopago.backend.application.usecase.person.GetPersonByIdUseCase;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
-@Component
+@Service
 public class GetPersonByIdInteractorImpl implements GetPersonByIdInteractor {
 
     private final GetPersonByIdUseCase getPersonByIdUseCase;
@@ -22,8 +22,8 @@ public class GetPersonByIdInteractorImpl implements GetPersonByIdInteractor {
     }
 
     @Override
-    public Mono<GetPersonByIdResponse> getPersonById(UUID personId) {
-        return getPersonByIdUseCase.getPersonById(personId)
+    public Mono<GetPersonByIdResponse> execute(UUID personId) {
+        return getPersonByIdUseCase.execute(personId)
                 .map(personDTOMapper::toGetPersonByIdResponse);
     }
 }

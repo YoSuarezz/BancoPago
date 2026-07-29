@@ -62,9 +62,9 @@ En Clean Architecture clásica *Interactor* ≡ *UseCase*. Aquí se separan a pr
 ### Ejemplo real (`CreatePerson`)
 
 ```
-CreatePersonInteractorImpl.createPerson(request)
-  → PersonDTOMapper.toDomain(request)          // VOs validan aquí
-  → CreatePersonUseCase.createPerson(domain)
+CreatePersonInteractorImpl.execute(request)
+  → PersonDTOMapper.toDomain(request)
+  → CreatePersonUseCase.execute(domain)
       → CreatePersonRulesValidator.validate
             → UniqueDocumentRule (tipo+número)
             → UniqueEmailRule
@@ -75,10 +75,9 @@ CreatePersonInteractorImpl.createPerson(request)
 ### Ejemplo real (`CreateAccount`)
 
 ```
-CreateAccountInteractorImpl.createAccount(request)
-  → CreateAccountCommand(ownerId, type)   // no Domain aún: falta número
-  → CreateAccountUseCase.createAccount(command)
-      → AccountNumberGenerator + new AccountDomain(...)
+CreateAccountInteractorImpl.execute(request)
+  → AccountNumberGenerator → new AccountDomain(...)
+  → CreateAccountUseCase.execute(domain)
       → CreateAccountRulesValidator.validate
             → OwnerExistsRule
             → MaxAccountsPerOwnerRule (máx. 5)
@@ -87,21 +86,17 @@ CreateAccountInteractorImpl.createAccount(request)
   → AccountDTOMapper.toCreateAccountResponse(domain)
 ```
 
-### Ejemplo real (`ChangeAccountStatus`)
+### Ejemplo real (`BlockAccount`)
 
 ```
-ChangeAccountStatusInteractorImpl.changeAccountStatus(accountId, request)
-  → ChangeAccountStatusCommand(accountId, operation)
-  → ChangeAccountStatusUseCase.changeAccountStatus(command)
-      → ChangeAccountStatusRulesValidator.validate
-            → AllowedAccountStatusOperationRule   // política del UC (no OPERATE)
+BlockAccountInteractorImpl.execute(accountId)
+  → BlockAccountUseCase.execute(accountId)
       → findAccountById → AccountNotFoundException si vacío
-      → AccountDomain.block|unblock|close → save
-  → AccountDTOMapper.toChangeAccountStatusResponse(domain)
+      → AccountDomain.block() → save
+  → AccountDTOMapper.toAccountStatusResponse(domain)
 ```
 
-Not-found se resuelve en el UseCase al cargar el Domain (mismo criterio que GetAccountBalance),
-no con una Rule que hace `find` y descarta el agregado.
+Igual patrón para `UnblockAccount` (`unblock`) y `CloseAccount` (`close`). Transiciones inválidas → `InvalidAccountStateException` en dominio.
 
 ### Rules de aplicación actuales (Módulo 1)
 
@@ -109,7 +104,7 @@ no con una Rule que hace `find` y descarta el agregado.
 |----------|--------|
 | CreatePerson | `UniqueDocumentRule`, `UniqueEmailRule` |
 | CreateAccount | `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountNumberRule` |
-| ChangeAccountStatus | `AllowedAccountStatusOperationRule` |
+| Block / Unblock / Close Account | (ninguna; invariantes en Domain + NotFound en UseCase) |
 
 ---
 
@@ -165,7 +160,7 @@ getUserMessage() / getCode()  →  GlobalExceptionHandler → JSON al cliente
 | Ej: NotFound → 404, Duplicate → 409, Blocked → 409 | Ej: `NUMBER_EMPTY`, `TYPE_REQUIRED`, `CURRENCY_MISMATCH` vía `InvalidAccountException.create(AccountError.X, args)` |
 
 **Ya existían (invariantes de dominio):**  
-`InvalidAccountException`, `InvalidPersonException`, `AccountBlockedException`, `InsufficientBalanceException`, `InvalidAccountStateException`, `InvalidAmountException`, `UnsupportedAccountStatusOperationException` (operación no admitida por el UC de cambio de estado; distinto de `INVALID_STATE`).
+`InvalidAccountException`, `InvalidPersonException`, `AccountBlockedException`, `InsufficientBalanceException`, `InvalidAccountStateException`, `InvalidAmountException`.
 
 **Se crearon para casos de aplicación/consulta (use cases):**  
 `PersonNotFoundException`, `DuplicateDocumentException`, `AccountNotFoundException`, `DuplicateAccountException`.
@@ -178,7 +173,7 @@ No hace falta una excepción por cada entrada del enum: el enum tiene **todos** 
 |--------|---------|
 | VO / entidad (puro) | `new Email(...)` → `InvalidPersonException` + `PersonError.EMAIL_INVALID` |
 | RulesValidator (estado) | documento ya existe → `DuplicateDocumentException` |
-| UseCase (consulta / carga vacía) | `findById` empty → `AccountNotFoundException` (GetBalance y ChangeAccountStatus) |
+| UseCase (consulta / carga vacía) | `findById` empty → `AccountNotFoundException` (GetBalance, Block/Unblock/Close) |
 
 ---
 
@@ -196,7 +191,7 @@ No hace falta una excepción por cada entrada del enum: el enum tiene **todos** 
 
 | Dirección | Herramienta | Por qué |
 |-----------|-------------|---------|
-| Domain → Response | **MapStruct** (`abstract class @Mapper`) | Casi 1:1; valor real de MapStruct |
+| Domain → Response | **MapStruct** (`interface` o `abstract class @Mapper`) | Casi 1:1; valor real de MapStruct |
 | Request → Domain (VOs/herencia) | Método concreto en `*DTOMapper` | Factory de aplicación; no forzar generación |
 | Entity ↔ Domain | **Manual** (`@Component`) | VOs + `PersonDomain` abstracta |
 
@@ -228,12 +223,20 @@ com.bancopago.backend/
 │   ├── primaryports/ ...
 │   ├── secondaryports/ ...
 │   └── usecase/
-│       ├── Rule.java                 # opcional (reutilización rara)
+│       ├── Rule.java
 │       ├── RulesValidator.java
+│       ├── UseCaseWithReturn.java    # base; UC concreto = interfaz vacía que la extiende
 │       └── {module}/
-│           ├── impl/
-│           └── rulesvalidator/(+ impl/)   # validaciones con repo aquí (sin carpeta rules/)
+│           ├── impl/                 # implementa execute(...)
+│           └── rulesvalidator/
+│               ├── impl/
+│               └── rules/(+ impl/)
 ├── infrastructure/
+│   ├── primaryadapters/
+│   │   ├── controller/{module}/
+│   │   └── adapter/response/         # Response / ApiResponse wrappers
+│   └── secondaryadapters/
+│       └── r2dbc/{module|config}/
 └── crosscutting/
 ```
 

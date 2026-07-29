@@ -1,9 +1,7 @@
 package com.bancopago.backend.application.usecase.person;
 
+import com.bancopago.backend.application.usecase.UseCaseWithReturn;
 import com.bancopago.backend.domain.person.PersonDomain;
-import reactor.core.publisher.Mono;
 
-public interface CreatePersonUseCase {
-
-    Mono<PersonDomain> createPerson(PersonDomain person);
+public interface CreatePersonUseCase extends UseCaseWithReturn<PersonDomain, PersonDomain> {
 }

@@ -68,7 +68,7 @@ Controller → Interactor → UseCase → RulesValidator (+ Rule) + Repository +
 - UseCase orquesta; no mete reglas de BD inline.
 - `Rule<T>` solo si hay 2+ reglas independientes o reutilización.
 - DTOs específicos por caso de uso; sin `fromDomain()` en el DTO.
-- Método de negocio explícito (`createAccount`), no `execute` concreto.
+- Interfaces UseCase/Interactor vacías que extienden la base; impl con `execute`.
 ```
 
 ---

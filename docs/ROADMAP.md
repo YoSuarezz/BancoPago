@@ -27,7 +27,7 @@
 | 1.7 | Migraciones Flyway (V1) | ✅ Completado |
 | 1.8 | Mappers Entity↔Domain manuales | ✅ Completado |
 | 1.9 | Documentación viva (ARCHITECTURE, DECISIONS, GUIDE, ROADMAP, ISSUE_TEMPLATE) | ✅ Completado |
-| 1.10 | Casos de uso + Interactors + RulesValidators (Person/Account) | 🟡 En PR (`feature/person-account-use-cases`, #9+#10) |
+| 1.10 | Casos de uso + Interactors + RulesValidators (Person/Account) | ✅ Completado (`feature/person-account-use-cases`) |
 | 1.11 | Controllers REST + GlobalExceptionHandler | 🔲 Pendiente |
 | 1.12 | Stream SSE de saldo | 🔲 Pendiente |
 | 1.13 | Dashboard Angular de cuentas | 🔲 Pendiente |

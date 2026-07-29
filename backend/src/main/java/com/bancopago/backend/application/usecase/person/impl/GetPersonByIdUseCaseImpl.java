@@ -19,7 +19,7 @@ public class GetPersonByIdUseCaseImpl implements GetPersonByIdUseCase {
     }
 
     @Override
-    public Mono<PersonDomain> getPersonById(UUID personId) {
+    public Mono<PersonDomain> execute(UUID personId) {
         return personRepository.findPersonById(personId)
                 .switchIfEmpty(Mono.error(PersonNotFoundException.create(personId)));
     }
