@@ -1,7 +1,11 @@
 package com.bancopago.backend.application.primaryports.mapper.person;
 
 import com.bancopago.backend.application.primaryports.dto.person.request.CreatePersonRequest;
+import com.bancopago.backend.application.primaryports.dto.person.response.CreateClientResponse;
+import com.bancopago.backend.application.primaryports.dto.person.response.CreateEmployeeResponse;
 import com.bancopago.backend.application.primaryports.dto.person.response.CreatePersonResponse;
+import com.bancopago.backend.application.primaryports.dto.person.response.GetClientByIdResponse;
+import com.bancopago.backend.application.primaryports.dto.person.response.GetEmployeeByIdResponse;
 import com.bancopago.backend.application.primaryports.dto.person.response.GetPersonByIdResponse;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.enums.PersonType;
@@ -13,16 +17,11 @@ import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
-/**
- * Híbrido: {@code toDomain} es factory de aplicación (Client/Employee + VOs);
- * Domain→Response usa métodos abstract generados por MapStruct (+ dispatch instanceof).
- */
 @Mapper(componentModel = "spring")
 public abstract class PersonDTOMapper {
 
-    public PersonDomain toDomain(CreatePersonRequest request) {
+    public PersonDomain toPersonDomain(CreatePersonRequest request) {
         if (request.personType() == null) {
             throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
         }
@@ -52,45 +51,73 @@ public abstract class PersonDTOMapper {
 
     public CreatePersonResponse toCreatePersonResponse(PersonDomain person) {
         if (person instanceof ClientDomain client) {
-            return fromClientToCreateResponse(client);
+            return new CreateClientResponse(
+                    client.getId(),
+                    client.getName(),
+                    client.getDocument(),
+                    enumName(client.getDocumentType()),
+                    client.getEmail(),
+                    blankToNull(client.getPhone()),
+                    enumName(client.getPersonType()),
+                    blankToNull(client.getClientNumber()),
+                    client.getMembershipDate()
+            );
         }
         if (person instanceof EmployeeDomain employee) {
-            return fromEmployeeToCreateResponse(employee);
+            return new CreateEmployeeResponse(
+                    employee.getId(),
+                    employee.getName(),
+                    employee.getDocument(),
+                    enumName(employee.getDocumentType()),
+                    employee.getEmail(),
+                    blankToNull(employee.getPhone()),
+                    enumName(employee.getPersonType()),
+                    blankToNull(employee.getPosition()),
+                    blankToNull(employee.getArea()),
+                    blankToNull(employee.getCostCenter()),
+                    blankToNull(employee.getContractType())
+            );
         }
         throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
     }
 
     public GetPersonByIdResponse toGetPersonByIdResponse(PersonDomain person) {
         if (person instanceof ClientDomain client) {
-            return fromClientToGetResponse(client);
+            return new GetClientByIdResponse(
+                    client.getId(),
+                    client.getName(),
+                    client.getDocument(),
+                    enumName(client.getDocumentType()),
+                    client.getEmail(),
+                    blankToNull(client.getPhone()),
+                    enumName(client.getPersonType()),
+                    blankToNull(client.getClientNumber()),
+                    client.getMembershipDate()
+            );
         }
         if (person instanceof EmployeeDomain employee) {
-            return fromEmployeeToGetResponse(employee);
+            return new GetEmployeeByIdResponse(
+                    employee.getId(),
+                    employee.getName(),
+                    employee.getDocument(),
+                    enumName(employee.getDocumentType()),
+                    employee.getEmail(),
+                    blankToNull(employee.getPhone()),
+                    enumName(employee.getPersonType()),
+                    blankToNull(employee.getPosition()),
+                    blankToNull(employee.getArea()),
+                    blankToNull(employee.getCostCenter()),
+                    blankToNull(employee.getContractType())
+            );
         }
         throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
     }
 
-    @Mapping(source = "document", target = "documentNumber")
-    @Mapping(target = "position", ignore = true)
-    @Mapping(target = "area", ignore = true)
-    @Mapping(target = "costCenter", ignore = true)
-    @Mapping(target = "contractType", ignore = true)
-    protected abstract CreatePersonResponse fromClientToCreateResponse(ClientDomain client);
+    private static String enumName(Enum<?> value) {
+        return value == null ? null : value.name();
+    }
 
-    @Mapping(source = "document", target = "documentNumber")
-    @Mapping(target = "clientNumber", ignore = true)
-    @Mapping(target = "membershipDate", ignore = true)
-    protected abstract CreatePersonResponse fromEmployeeToCreateResponse(EmployeeDomain employee);
-
-    @Mapping(source = "document", target = "documentNumber")
-    @Mapping(target = "position", ignore = true)
-    @Mapping(target = "area", ignore = true)
-    @Mapping(target = "costCenter", ignore = true)
-    @Mapping(target = "contractType", ignore = true)
-    protected abstract GetPersonByIdResponse fromClientToGetResponse(ClientDomain client);
-
-    @Mapping(source = "document", target = "documentNumber")
-    @Mapping(target = "clientNumber", ignore = true)
-    @Mapping(target = "membershipDate", ignore = true)
-    protected abstract GetPersonByIdResponse fromEmployeeToGetResponse(EmployeeDomain employee);
+    private static String blankToNull(String value) {
+        return TextHelper.isBlank(value) ? null : value;
+    }
 }

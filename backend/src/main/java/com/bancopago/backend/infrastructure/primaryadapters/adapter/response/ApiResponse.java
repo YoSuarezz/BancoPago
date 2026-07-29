@@ -12,6 +12,14 @@ public class ApiResponse<T> extends Response<T> {
         return response;
     }
 
+    public static <T> ApiResponse<T> of(T item, String message) {
+        ApiResponse<T> response = of(item);
+        if (message != null && !message.isBlank()) {
+            response.getMessages().add(message);
+        }
+        return response;
+    }
+
     public static <T> ApiResponse<T> of(List<T> items) {
         ApiResponse<T> response = new ApiResponse<>();
         if (items != null) {

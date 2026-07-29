@@ -25,28 +25,28 @@ public class PersonR2dbcAdapter implements PersonRepository {
     public Mono<PersonDomain> savePerson(PersonDomain person) {
         return personR2dbcRepository.findById(person.getId())
                 .flatMap(existing -> {
-                    PersonEntity entity = personEntityMapper.toEntity(person);
+                    PersonEntity entity = personEntityMapper.toPersonEntity(person);
                     entity.setCreatedAt(existing.getCreatedAt());
                     entity.markPersisted();
                     return personR2dbcRepository.save(entity);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                    PersonEntity entity = personEntityMapper.toEntity(person);
+                    PersonEntity entity = personEntityMapper.toPersonEntity(person);
                     entity.markNew();
                     return personR2dbcRepository.save(entity);
                 }))
-                .map(personEntityMapper::toDomain);
+                .map(personEntityMapper::toPersonDomain);
     }
 
     @Override
     public Mono<PersonDomain> findPersonById(UUID personId) {
-        return personR2dbcRepository.findById(personId).map(personEntityMapper::toDomain);
+        return personR2dbcRepository.findById(personId).map(personEntityMapper::toPersonDomain);
     }
 
     @Override
     public Mono<PersonDomain> findPersonByDocument(String documentNumber, String documentType) {
         return personR2dbcRepository.findByDocumentNumberAndDocumentType(documentNumber, documentType)
-                .map(personEntityMapper::toDomain);
+                .map(personEntityMapper::toPersonDomain);
     }
 
     @Override

@@ -114,6 +114,26 @@ class PersonTest {
                     new DocumentNumber(DocumentType.CC, "")
             );
         }
+
+        @Test
+        @DisplayName("should throw exception when client number is blank")
+        void shouldThrowExceptionWhenClientNumberIsBlank() {
+            var document = new DocumentNumber(DocumentType.CC, "1234567890");
+            var email = new Email("juan@email.com");
+            assertThrows(InvalidPersonException.class, () ->
+                    new ClientDomain("Juan Perez", document, email, "3001234567", "")
+            );
+        }
+
+        @Test
+        @DisplayName("should throw exception when client number is null")
+        void shouldThrowExceptionWhenClientNumberIsNull() {
+            var document = new DocumentNumber(DocumentType.CC, "1234567890");
+            var email = new Email("juan@email.com");
+            assertThrows(InvalidPersonException.class, () ->
+                    new ClientDomain("Juan Perez", document, email, "3001234567", null)
+            );
+        }
     }
 
     @Nested
@@ -135,6 +155,28 @@ class PersonTest {
             assertEquals("IT", employee.getArea());
             assertEquals("CC-001", employee.getCostCenter());
             assertEquals("INDEFINITE", employee.getContractType());
+        }
+
+        @Test
+        @DisplayName("should throw exception when position is blank")
+        void shouldThrowExceptionWhenPositionIsBlank() {
+            var document = new DocumentNumber(DocumentType.CC, "9876543210");
+            var email = new Email("maria@bank.com");
+            assertThrows(InvalidPersonException.class, () ->
+                    new EmployeeDomain("Maria Lopez", document, email, "3009876543",
+                            "", "IT", "CC-001", "INDEFINITE")
+            );
+        }
+
+        @Test
+        @DisplayName("should throw exception when area is blank")
+        void shouldThrowExceptionWhenAreaIsBlank() {
+            var document = new DocumentNumber(DocumentType.CC, "9876543210");
+            var email = new Email("maria@bank.com");
+            assertThrows(InvalidPersonException.class, () ->
+                    new EmployeeDomain("Maria Lopez", document, email, "3009876543",
+                            "Analyst", null, "CC-001", "INDEFINITE")
+            );
         }
     }
 }

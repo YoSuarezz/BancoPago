@@ -16,7 +16,8 @@ public enum AccountError implements ErrorCode {
     NUMBER_ALREADY_EXISTS("Ya existe una cuenta con el número %s"),
     OWNER_NOT_FOUND("No se encontró el propietario de la cuenta con id %s"),
     CLOSE_WITH_BALANCE("No se puede cerrar la cuenta %s con saldo %s. El saldo debe ser cero"),
-    MAX_ACCOUNTS_EXCEEDED("El propietario %s ya alcanzó el máximo de %d cuentas permitidas");
+    MAX_ACCOUNTS_EXCEEDED("El propietario %s ya alcanzó el máximo de %d cuentas permitidas"),
+    DUPLICATE_ACCOUNT_TYPE("El propietario %s ya tiene una cuenta de tipo %s");
 
     private final String messageTemplate;
 

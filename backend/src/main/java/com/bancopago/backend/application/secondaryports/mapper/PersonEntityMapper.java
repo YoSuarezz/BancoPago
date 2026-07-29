@@ -13,12 +13,10 @@ import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 @Component
 public class PersonEntityMapper {
 
-    public PersonEntity toEntity(PersonDomain domain) {
+    public PersonEntity toPersonEntity(PersonDomain domain) {
         if (domain == null) {
             return null;
         }
@@ -30,11 +28,22 @@ public class PersonEntityMapper {
         entity.setEmail(domain.getEmail());
         entity.setPhone(domain.getPhone());
         entity.setPersonType(requireEnumName(domain.getPersonType(), PersonError.TYPE_REQUIRED));
+
+        if (domain instanceof ClientDomain client) {
+            entity.setClientNumber(client.getClientNumber());
+            entity.setMembershipDate(client.getMembershipDate());
+        } else if (domain instanceof EmployeeDomain employee) {
+            entity.setPosition(employee.getPosition());
+            entity.setArea(employee.getArea());
+            entity.setCostCenter(employee.getCostCenter());
+            entity.setContractType(employee.getContractType());
+        }
+
         entity.markNew();
         return entity;
     }
 
-    public PersonDomain toDomain(PersonEntity entity) {
+    public PersonDomain toPersonDomain(PersonEntity entity) {
         if (entity == null) {
             return null;
         }
@@ -52,10 +61,10 @@ public class PersonEntityMapper {
                     entity.getName(),
                     email,
                     entity.getPhone(),
-                    TextHelper.EMPTY,
-                    TextHelper.EMPTY,
-                    TextHelper.EMPTY,
-                    TextHelper.EMPTY
+                    entity.getPosition(),
+                    entity.getArea(),
+                    entity.getCostCenter(),
+                    entity.getContractType()
             );
         }
         return new ClientDomain(
@@ -64,23 +73,9 @@ public class PersonEntityMapper {
                 entity.getName(),
                 email,
                 entity.getPhone(),
-                TextHelper.EMPTY,
-                null
+                entity.getClientNumber(),
+                entity.getMembershipDate()
         );
-    }
-
-    public List<PersonEntity> toEntityCollection(List<PersonDomain> domainList) {
-        if (domainList == null) {
-            return List.of();
-        }
-        return domainList.stream().map(this::toEntity).toList();
-    }
-
-    public List<PersonDomain> toDomainCollection(List<PersonEntity> entityList) {
-        if (entityList == null) {
-            return List.of();
-        }
-        return entityList.stream().map(this::toDomain).toList();
     }
 
     private String requireEnumName(Enum<?> value, PersonError error) {

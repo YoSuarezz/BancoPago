@@ -63,7 +63,7 @@ En Clean Architecture clásica *Interactor* ≡ *UseCase*. Aquí se separan a pr
 
 ```
 CreatePersonInteractorImpl.execute(request)
-  → PersonDTOMapper.toDomain(request)
+  → PersonDTOMapper.toPersonDomain(request)
   → CreatePersonUseCase.execute(domain)
       → CreatePersonRulesValidator.validate
             → UniqueDocumentRule (tipo+número)
@@ -81,6 +81,7 @@ CreateAccountInteractorImpl.execute(request)
       → CreateAccountRulesValidator.validate
             → OwnerExistsRule
             → MaxAccountsPerOwnerRule (máx. 5)
+            → UniqueAccountTypePerOwnerRule (máx. 1 cuenta activa/bloqueada del mismo tipo)
             → UniqueAccountNumberRule
       → AccountRepository.saveAccount(domain)
   → AccountDTOMapper.toCreateAccountResponse(domain)
@@ -98,12 +99,30 @@ BlockAccountInteractorImpl.execute(accountId)
 
 Igual patrón para `UnblockAccount` (`unblock`) y `CloseAccount` (`close`). Transiciones inválidas → `InvalidAccountStateException` en dominio.
 
+### REST (Módulo 1) — paths en inglés
+
+| Método | Path | Interactor |
+|--------|------|------------|
+| POST | `/api/v1/persons` | `CreatePersonInteractor` → 201 |
+| GET | `/api/v1/persons/{id}` | `GetPersonByIdInteractor` → 200 |
+| POST | `/api/v1/accounts` | `CreateAccountInteractor` → 201 |
+| GET | `/api/v1/accounts/{id}/balance` | `GetAccountBalanceInteractor` → 200 |
+| POST | `/api/v1/accounts/{id}/block` | `BlockAccountInteractor` → 200 |
+| POST | `/api/v1/accounts/{id}/unblock` | `UnblockAccountInteractor` → 200 |
+| POST | `/api/v1/accounts/{id}/close` | `CloseAccountInteractor` → 200 |
+
+Respuesta de éxito: `ApiResponse<T>` (`data` + `messages`). Mensajes de éxito en español vía constantes en `infrastructure/ResponseMessages` (no literales en el controller). Errores: `GlobalExceptionHandler` → `{ code, message, messages }`.
+
+Responses tipados por subtipo: `CreatePersonResponse` / `GetPersonByIdResponse` son `sealed interface` → `CreateClientResponse` / `CreateEmployeeResponse` (y equivalentes Get). Campos ajenos al tipo no se serializan (`@JsonInclude(NON_NULL)`). `AccountStatusResponse` solo incluye `id`, `number`, `status`, `balance`.
+
+No hay un `PATCH .../estado` único: bloqueo, desbloqueo y cierre son endpoints/use cases separados.
+
 ### Rules de aplicación actuales (Módulo 1)
 
 | Use case | Rules |
 |----------|--------|
 | CreatePerson | `UniqueDocumentRule`, `UniqueEmailRule` |
-| CreateAccount | `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountNumberRule` |
+| CreateAccount | `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule` |
 | Block / Unblock / Close Account | (ninguna; invariantes en Domain + NotFound en UseCase) |
 
 ---
@@ -123,7 +142,7 @@ Nivel 3  RulesValidator + Rules  →  reglas con repo o política del use case
 
 **Patrón:** cada validación con repo es interfaz `*Rule extends Rule<T>` + `*RuleImpl`; el `RulesValidator` las ejecuta en un solo `validate(...)`. El UseCase no conoce las rules individuales.
 
-Invariantes puros recientes (no Rule): nombre máx. 100 chars en `PersonDomain`; `AccountDomain.close()` exige saldo cero.
+Invariantes puros recientes (no Rule): nombre máx. 100 chars en `PersonDomain`; `clientNumber` obligatorio en `ClientDomain`; `position` + `area` obligatorios en `EmployeeDomain`; `AccountDomain.close()` exige saldo cero.
 
 | Ejemplo AgroSync | Equivalente BancoPago |
 |------------------|----------------------|
@@ -149,8 +168,10 @@ AccountError.NOT_FOUND("No se encontró la cuenta con id %s")
         ↓
 AccountNotFoundException.create(id)
         ↓  DomainException formatea el template con args
-getUserMessage() / getCode()  →  GlobalExceptionHandler → JSON al cliente
+getUserMessage() / getCode()  →  GlobalExceptionHandler → `{ "code", "message", "messages" }`
 ```
+
+Mapeo HTTP tipado: NotFound → 404; Duplicate* / Blocked / MaxAccounts / DuplicateAccountType → 409; Invalid* / InsufficientBalance → 400; fallback `DomainException` → 400; genérica → 500.
 
 ### ¿Cuándo nueva clase de excepción?
 
@@ -163,7 +184,7 @@ getUserMessage() / getCode()  →  GlobalExceptionHandler → JSON al cliente
 `InvalidAccountException`, `InvalidPersonException`, `AccountBlockedException`, `InsufficientBalanceException`, `InvalidAccountStateException`, `InvalidAmountException`.
 
 **Se crearon para casos de aplicación/consulta (use cases):**  
-`PersonNotFoundException`, `DuplicateDocumentException`, `AccountNotFoundException`, `DuplicateAccountException`.
+`PersonNotFoundException`, `DuplicateDocumentException`, `AccountNotFoundException`, `DuplicateAccountException`, `DuplicateAccountTypeException`, `MaxAccountsExceededException`, `DuplicateEmailException`.
 
 No hace falta una excepción por cada entrada del enum: el enum tiene **todos** los mensajes; la clase tipada solo cuando el tipo de fallo importa.
 
@@ -181,9 +202,9 @@ No hace falta una excepción por cada entrada del enum: el enum tiene **todos** 
 
 | Nivel | Dónde | Mecanismo | Ejemplo |
 |-------|-------|-----------|---------|
-| **1** | Controller / DTO Request | Jakarta Validation | Reject body malformado |
-| **2** | Domain / VO / entidad | Compact constructor, métodos de negocio | `Email`, `Money`, `account.block()` |
-| **3** | Application / RulesValidator | Consulta a repositorio | Documento único, owner existe |
+| **1** | Controller / DTO Request | Jakarta Validation | `@NotBlank`, `@Email`, `@Size(max=100)` en `CreatePersonRequest` |
+| **2** | Domain / VO / entidad | Compact constructor, métodos de negocio | `Email`, `Money`, `clientNumber` requerido, `account.block()` |
+| **3** | Application / RulesValidator | Consulta a repositorio | Documento único (tipo+número), owner existe, 1 tipo de cuenta por owner |
 
 ---
 
@@ -235,10 +256,15 @@ com.bancopago.backend/
 │   ├── primaryadapters/
 │   │   ├── controller/{module}/
 │   │   └── adapter/response/         # Response / ApiResponse wrappers
-│   └── secondaryadapters/
-│       └── r2dbc/{module|config}/
+│   ├── secondaryadapters/
+│   │   └── r2dbc/{module|config}/
+│   ├── GlobalExceptionHandler.java
+│   ├── ErrorResponse.java
+│   └── ResponseMessages.java         # constantes de mensajes de éxito (español)
 └── crosscutting/
 ```
+
+**Persistencia Person (subtipos):** columnas `client_number`, `membership_date`, `position`, `area`, `cost_center`, `contract_type` (V2). Unicidad de documento = `(document_type, document_number)` (V3), alineada con `UniqueDocumentRule`. `document_number` es `VARCHAR(30)` (alineado con VO).
 
 ---
 

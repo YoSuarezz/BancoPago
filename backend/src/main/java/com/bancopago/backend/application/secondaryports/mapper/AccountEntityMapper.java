@@ -12,12 +12,10 @@ import com.bancopago.backend.domain.enums.AccountType;
 import com.bancopago.backend.domain.enums.Currency;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 @Component
 public class AccountEntityMapper {
 
-    public AccountEntity toEntity(AccountDomain domain) {
+    public AccountEntity toAccountEntity(AccountDomain domain) {
         if (domain == null) {
             return null;
         }
@@ -36,7 +34,7 @@ public class AccountEntityMapper {
         return entity;
     }
 
-    public AccountDomain toDomain(AccountEntity entity) {
+    public AccountDomain toAccountDomain(AccountEntity entity) {
         if (entity == null) {
             return null;
         }
@@ -48,20 +46,6 @@ public class AccountEntityMapper {
                 new Money(entity.getBalance(), parseCurrency(entity.getCurrency())),
                 parseAccountStatus(entity.getStatus())
         );
-    }
-
-    public List<AccountEntity> toEntityCollection(List<AccountDomain> domainList) {
-        if (domainList == null) {
-            return List.of();
-        }
-        return domainList.stream().map(this::toEntity).toList();
-    }
-
-    public List<AccountDomain> toDomainCollection(List<AccountEntity> entityList) {
-        if (entityList == null) {
-            return List.of();
-        }
-        return entityList.stream().map(this::toDomain).toList();
     }
 
     private String requireEnumName(Enum<?> value) {

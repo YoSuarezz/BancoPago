@@ -101,16 +101,20 @@ backend/src/main/java/com/bancopago/backend/
 │
 ├── infrastructure/
 │   ├── primaryadapters/
-│   │   ├── controller/{module}/          # Controladores REST con @Valid
-│   │   └── adapter/response/             # Response / ApiResponse / PersonResponse / AccountResponse
+│   │   ├── controller/{module}/          # PersonController, AccountController (@Valid + ApiResponse)
+│   │   └── adapter/response/             # Response / ApiResponse (envelope HTTP)
 │   ├── secondaryadapters/
+│   │   ├── config/                       # SecurityConfig (permitAll local; JWT después)
 │   │   └── r2dbc/
 │   │       ├── {module}/                 # Adapter + Spring Data repo
 │   │       └── config/                   # Persistable callbacks, etc.
-│   └── GlobalExceptionHandler.java       # DomainException → HTTP status
+│   ├── GlobalExceptionHandler.java       # DomainException → HTTP status
+│   ├── GlobalExceptionHandler.java       # mapeo DomainException → HTTP + ErrorResponse
+│   ├── ErrorResponse.java                # { code, message, messages }
+│   └── ResponseMessages.java             # constantes mensajes de éxito (español)
 │
 └── resources/
-    └── db/migration/                     # Flyway SQL (tablas/columnas en inglés)
+    └── db/migration/                     # Flyway SQL (V1 schema, V2 subtype fields, V3 document unique)
 ```
 
 ---
@@ -222,11 +226,11 @@ public class AccountBlockedException extends DomainException {
 | **Entity ↔ Domain** | **Manual** (`@Component`) | VOs, `PersonDomain` abstracta, enums como `String` |
 
 **No** forzar MapStruct en Entity↔Domain ni en Request→Domain rico.  
-**No** adoptar Assembler/Factory como convención global: solo si un Response junta varios agregados (`*ResponseAssembler`) o el `toDomain` de Person crece demasiado (`PersonDomainFactory` en application).
+**No** adoptar Assembler/Factory como convención global: solo si un Response junta varios agregados (`*ResponseAssembler`) o el `toPersonDomain` de Person crece demasiado (`PersonDomainFactory` en application).
 
 **Ejemplo de mapper Entity (manual, maneja VOs):**
 ```java
-public AccountDomain toDomain(AccountEntity entity) {
+public AccountDomain toAccountDomain(AccountEntity entity) {
     return new AccountDomain(
         entity.getId(),
         entity.getOwnerId(),
@@ -330,14 +334,19 @@ public class OwnerExistsRuleImpl implements OwnerExistsRule {
 public Mono<Void> validate(AccountDomain account) {
     return ownerExistsRule.validate(account.getOwnerId())
         .then(maxAccountsPerOwnerRule.validate(account.getOwnerId()))
+        .then(uniqueAccountTypePerOwnerRule.validate(account))
         .then(uniqueAccountNumberRule.validate(account.getNumber()));
 }
 ```
 
 Ubicación: `rulesvalidator/rules/` (interfaces) + `rules/impl/` (implementaciones). Nunca en `domain/`.
 
-Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountNumberRule`.
+Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule`.
 Block/Unblock/Close no usan RulesValidator: cargan la cuenta, aplican el método de dominio y guardan.
+
+Invariantes de dominio (Person): `clientNumber` obligatorio en `ClientDomain`; `position` + `area` obligatorios en `EmployeeDomain`.
+
+**Pendiente (necesita definición de producto):** restricciones de `AccountType` por `PersonType`; operaciones sobre estado `SEIZED`; si cuentas `INACTIVE` cuentan al cupo de 5.
 
 ### 3.7 Patrón de Use Case (Reactivo) — ejemplo
 
@@ -366,7 +375,7 @@ El número de cuenta se genera en el **Interactor** (arma `AccountDomain` comple
 
 - El **Interactor** usa `*DTOMapper`: Request→Domain (si aplica) y Domain→Response.
 - Domain→Response 1:1 puro → `interface` MapStruct (`AccountDTOMapper`).
-- Request→Domain con herencia/VOs → `abstract class` con método concreto (`PersonDTOMapper.toDomain`).
+- Request→Domain con herencia/VOs → `abstract class` con método concreto (`PersonDTOMapper.toPersonDomain`).
 - CreateAccount: Interactor genera número + `new AccountDomain`; mapper de Account solo Domain→Response.
 - El **UseCase** no importa DTOs ni mappers de DTO.
 - Entity↔Domain sigue manual en el Adapter.
@@ -379,7 +388,7 @@ El número de cuenta se genera en el **Interactor** (arma `AccountDomain` comple
 
 | Contexto | Idioma | Ejemplo |
 |----------|--------|---------|
-| Código Java (clases, métodos, vars, entities) | Inglés | `AccountDomain`, `getBalance()`, `ownerId` |
+| Código Java (clases, métodos, vars, entities) | Inglés | `AccountDomain`, `getAccountBalance()`, `ownerId` |
 | Documentación (`.md` files) | **Español** | Todos los archivos .md |
 | Nombres de tablas y columnas BD | Inglés | `person`, `account`, `account_number`, `document_type` |
 | Valores de enums en BD / dominio | Inglés | `CLIENT`, `ACTIVE`, `SAVINGS` |
@@ -403,13 +412,31 @@ El número de cuenta se genera en el **Interactor** (arma `AccountDomain` comple
 | Adaptador R2DBC | PascalCase + `Adapter` | `AccountR2dbcAdapter` |
 | Controlador | PascalCase + `Controller` | `AccountController` |
 | DTO Request | PascalCase + `Request` | `CreateAccountRequest` |
-| DTO Response | PascalCase + `Response` | `AccountResponse` |
-| Paquetes | minusculas.singular | `domain.account`, `application.service` |
-| Métodos de repositorio (puerto) | `verb` + `Entity` + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
+| DTO Response (caso de uso) | PascalCase + operación + `Response` | `CreateAccountResponse` |
+| Envelope HTTP | `Response` / `ApiResponse` | `ApiResponse.of(dto)` / `ApiResponse.of(dto, ResponseMessages.X)` |
+| Paquetes | minusculas.singular | `domain.account`, `application.usecase` |
+| Métodos de repositorio (puerto) | `verb` + recurso + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
+| Métodos de controller | `verb` + recurso (+ criterio) | `createPerson`, `getAccountBalance`, `blockAccount` |
+| Métodos Entity↔Domain mapper | `to{Resource}Entity` / `to{Resource}Domain` | `toAccountEntity`, `toPersonDomain` |
+| Métodos DTO mapper | `to{Resource}Domain` / `to{UseCase}Response` | `toPersonDomain`, `toCreateAccountResponse` |
 | Interfaces use case / interactor | PascalCase + operación | `CreateAccountUseCase`, `CreateAccountInteractor` |
-| Método UseCase / Interactor | `execute` (de la base) | `useCase.execute(domain)`, `interactor.execute(request)` |
-| Métodos genéricos técnicos (`UseCase*` / `Interactor*`) | `execute` solo en interfaces genéricas | No exponer `execute` como API pública del use case concreto |
+| Método UseCase / Interactor | `execute` (contrato de la base) | `useCase.execute(domain)`, `interactor.execute(request)` |
+| Métodos de dominio en la entidad | verbo corto (el receptor ya es el recurso) | `account.block()`, `account.close()` |
+| Factory de excepciones / entities | `create(...)` | `PersonNotFoundException.create(id)` |
 | Constantes | UPPER_SNAKE_CASE | `MAX_CONCURRENCY`, `DEFAULT_CURRENCY` |
+
+### 4.2.1 Rutas HTTP (REST resource-oriented)
+
+| Regla | Aplicación en BancoPago |
+|-------|-------------------------|
+| **Sustantivos** para recursos (no verbos en el path) | `/persons`, `/accounts` — no `/createPerson` |
+| **Plural** para colecciones | `/api/v1/persons`, `/api/v1/accounts` |
+| El **verbo HTTP** lleva la acción CRUD | `POST` crear, `GET` leer |
+| Sub-recurso para consultas | `GET /accounts/{id}/balance` |
+| Acción de negocio no-CRUD (transición de estado) | `POST /accounts/{id}/block` (mismo patrón para unblock/close) |
+| Inglés, kebab/segmentos en minúscula | `/api/v1/...` |
+
+No usar un único `PATCH /accounts/{id}/estado`: cada transición es un use case y un endpoint propios.
 
 ### 4.3 Estilo de Código
 
@@ -505,10 +532,10 @@ Cada implementación de funcionalidad se mapea a un slice vertical a través de 
 
 **Ejemplo concreto — estado actual:**
 
-Módulo 1 (Person + Account): domain, secondary ports, R2DBC adapters, DTOs, mappers, Interactors, UseCases, RulesValidators y Rules están implementados. Pendiente:
+Módulo 1 (Person + Account): domain → Controllers REST (`/api/v1/persons`, `/api/v1/accounts` + block/unblock/close), `GlobalExceptionHandler` y `SecurityConfig` (permitAll local) están implementados. Pendiente:
 
 | Issue | Capas Necesarias |
 |-------|------------------|
-| Controllers + GlobalExceptionHandler | infrastructure/primaryadapters |
 | SSE balance stream | application/usecase + infrastructure/controller |
 | Angular dashboard | frontend/ |
+| JWT real | infrastructure/secondaryadapters/config |
