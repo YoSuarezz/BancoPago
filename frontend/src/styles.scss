@@ -1,4 +1,68 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --bp-yellow: #ffd200;
+  --bp-yellow-deep: #f5c400;
+  --bp-ink: #1a1a1a;
+  --bp-muted: #5c5c5c;
+  --bp-surface: #f7f7f5;
+  --bp-card: #ffffff;
+  --bp-line: #e6e6e3;
+  --bp-danger: #b42318;
+  --bp-danger-bg: #fef3f2;
+  --bp-ok: #0e7a3d;
+  --bp-ok-bg: #eaf7ef;
+  --bp-warn: #9a6700;
+  --bp-warn-bg: #fff8e6;
+  --bp-radius: 1rem;
+  --bp-shadow: 0 12px 40px rgba(26, 26, 26, 0.06);
+  --bp-font: "Plus Jakarta Sans", system-ui, sans-serif;
+  --bp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--bp-font);
+  color: var(--bp-ink);
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(255, 210, 0, 0.28), transparent 55%),
+    radial-gradient(900px 400px at 100% 0%, rgba(255, 210, 0, 0.12), transparent 50%),
+    var(--bp-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+@keyframes bp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bp-pulse-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 122, 61, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(14, 122, 61, 0);
+  }
+}

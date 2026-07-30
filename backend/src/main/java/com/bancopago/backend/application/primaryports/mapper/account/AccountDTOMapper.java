@@ -3,6 +3,7 @@ package com.bancopago.backend.application.primaryports.mapper.account;
 import com.bancopago.backend.application.primaryports.dto.account.response.AccountStatusResponse;
 import com.bancopago.backend.application.primaryports.dto.account.response.CreateAccountResponse;
 import com.bancopago.backend.application.primaryports.dto.account.response.GetAccountBalanceResponse;
+import com.bancopago.backend.application.primaryports.dto.account.response.ListAccountResponse;
 import com.bancopago.backend.domain.account.AccountDomain;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -11,6 +12,8 @@ import org.mapstruct.Mapping;
 public interface AccountDTOMapper {
 
     CreateAccountResponse toCreateAccountResponse(AccountDomain account);
+
+    ListAccountResponse toListAccountResponse(AccountDomain account);
 
     AccountStatusResponse toAccountStatusResponse(AccountDomain account);
 

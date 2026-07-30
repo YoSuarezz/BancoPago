@@ -1,6 +1,5 @@
-package com.bancopago.backend.application.secondaryports.mapper;
+package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.mapper;
 
-import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.enums.DocumentType;
 import com.bancopago.backend.domain.enums.PersonType;
@@ -11,6 +10,7 @@ import com.bancopago.backend.domain.person.PersonError;
 import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.PersonEntity;
 import org.springframework.stereotype.Component;
 
 @Component

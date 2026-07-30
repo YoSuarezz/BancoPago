@@ -1,9 +1,9 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.account;
 
-import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
-import com.bancopago.backend.application.secondaryports.mapper.AccountEntityMapper;
 import com.bancopago.backend.application.secondaryports.repository.AccountRepository;
 import com.bancopago.backend.domain.account.AccountDomain;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.AccountEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.mapper.AccountEntityMapper;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

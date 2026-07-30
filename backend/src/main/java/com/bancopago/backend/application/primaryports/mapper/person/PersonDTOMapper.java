@@ -7,8 +7,8 @@ import com.bancopago.backend.application.primaryports.dto.person.response.Create
 import com.bancopago.backend.application.primaryports.dto.person.response.GetClientByIdResponse;
 import com.bancopago.backend.application.primaryports.dto.person.response.GetEmployeeByIdResponse;
 import com.bancopago.backend.application.primaryports.dto.person.response.GetPersonByIdResponse;
+import com.bancopago.backend.application.primaryports.dto.person.response.ListPersonResponse;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
-import com.bancopago.backend.domain.enums.PersonType;
 import com.bancopago.backend.domain.person.ClientDomain;
 import com.bancopago.backend.domain.person.EmployeeDomain;
 import com.bancopago.backend.domain.person.PersonDomain;
@@ -16,36 +16,31 @@ import com.bancopago.backend.domain.person.PersonError;
 import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.vo.DocumentNumber;
 import com.bancopago.backend.domain.person.vo.Email;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public abstract class PersonDTOMapper {
+@Component
+public class PersonDTOMapper {
 
-    public PersonDomain toPersonDomain(CreatePersonRequest request) {
-        if (request.personType() == null) {
-            throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
-        }
-        var documentNumber = new DocumentNumber(request.documentType(), request.documentNumber());
-        var email = new Email(request.email());
-
-        if (request.personType() == PersonType.EMPLOYEE) {
-            return new EmployeeDomain(
-                    request.name(),
-                    documentNumber,
-                    email,
-                    request.phone(),
-                    TextHelper.applyTrim(request.position()),
-                    TextHelper.applyTrim(request.area()),
-                    TextHelper.applyTrim(request.costCenter()),
-                    TextHelper.applyTrim(request.contractType())
-            );
-        }
+    public ClientDomain toClientDomain(CreatePersonRequest request, String clientNumber) {
         return new ClientDomain(
                 request.name(),
-                documentNumber,
-                email,
+                new DocumentNumber(request.documentType(), request.documentNumber()),
+                new Email(request.email()),
                 request.phone(),
-                TextHelper.applyTrim(request.clientNumber())
+                TextHelper.applyTrim(clientNumber)
+        );
+    }
+
+    public EmployeeDomain toEmployeeDomain(CreatePersonRequest request) {
+        return new EmployeeDomain(
+                request.name(),
+                new DocumentNumber(request.documentType(), request.documentNumber()),
+                new Email(request.email()),
+                request.phone(),
+                TextHelper.applyTrim(request.position()),
+                TextHelper.applyTrim(request.area()),
+                TextHelper.applyTrim(request.costCenter()),
+                TextHelper.applyTrim(request.contractType())
         );
     }
 
@@ -111,6 +106,16 @@ public abstract class PersonDTOMapper {
             );
         }
         throw InvalidPersonException.create(PersonError.TYPE_REQUIRED);
+    }
+
+    public ListPersonResponse toListPersonResponse(PersonDomain person) {
+        return new ListPersonResponse(
+                person.getId(),
+                person.getName(),
+                person.getDocument(),
+                enumName(person.getDocumentType()),
+                enumName(person.getPersonType())
+        );
     }
 
     private static String enumName(Enum<?> value) {

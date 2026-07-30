@@ -1,6 +1,5 @@
-package com.bancopago.backend.application.secondaryports.mapper;
+package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.mapper;
 
-import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;
 import com.bancopago.backend.domain.account.AccountDomain;
 import com.bancopago.backend.domain.account.AccountError;
@@ -10,6 +9,7 @@ import com.bancopago.backend.domain.account.vo.Money;
 import com.bancopago.backend.domain.enums.AccountStatus;
 import com.bancopago.backend.domain.enums.AccountType;
 import com.bancopago.backend.domain.enums.Currency;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.AccountEntity;
 import org.springframework.stereotype.Component;
 
 @Component

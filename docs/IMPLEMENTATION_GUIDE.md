@@ -285,17 +285,32 @@ CreateAccount: el Interactor genera el número (`AccountNumberGenerator`), const
 
 ## 11. Paso 10 — Response wrapper + Controller
 
-`infrastructure/primaryadapters/adapter/response/` — `Response<T>`, `ApiResponse<T>` (envelope HTTP).
+`infrastructure/primaryadapters/adapter/response/`:
 
-`infrastructure/ResponseMessages.java` — constantes `static final` para mensajes de éxito en español. **No quemar literales** en el controller.
+| Clase | Rol |
+|-------|-----|
+| `ApiResponse<T>` | Envelope `{ data, messages }` |
+| `HttpResponses` | `created` / `ok` / `okList` → `Mono<ResponseEntity<ApiResponse<T>>>` |
+| `SseEvents` | `of(event, data)` / `map(flux, eventName)` → `ServerSentEvent` |
+
+`infrastructure/ResponseMessages.java` — constantes de mensajes de éxito en español. **No quemar literales** en el controller.
 
 `infrastructure/primaryadapters/controller/{module}/`
 
 - Inyecta **Interactor** (no UseCase).
 - `@Valid` en el body.
 - Errores → `GlobalExceptionHandler`.
-- Envuelve el DTO en `ApiResponse` / `*Response` al cliente.
-- Mensajes de éxito: `ApiResponse.of(dto, ResponseMessages.ACCOUNT_CREATED)`.
+- Envuelve con **helpers**, no con `.map(ApiResponse::of)` a mano.
+
+**Regla de capas (obligatoria):**
+
+| Qué | Dónde |
+|-----|--------|
+| DTO de negocio | Interactor (application) |
+| `ApiResponse` / `ResponseEntity` / status HTTP | `HttpResponses` (infrastructure) |
+| `ServerSentEvent` / nombre de evento SSE | `SseEvents` (infrastructure) |
+
+**No** mover `ServerSentEvent` ni `ApiResponse` al Interactor: contaminaría application con Spring Web y rompería reutilización desde otros adapters.
 
 ```java
 @RestController
@@ -303,30 +318,38 @@ CreateAccount: el Interactor genera el número (`AccountNumberGenerator`), const
 public class AccountController {
     private final CreateAccountInteractor createAccountInteractor;
     private final BlockAccountInteractor blockAccountInteractor;
-    // + GetAccountBalance, UnblockAccount, CloseAccount
+    private final StreamAccountBalanceInteractor streamAccountBalanceInteractor;
+    // + GetAccountBalance, ListAccountsByOwner, UnblockAccount, CloseAccount
 
     @PostMapping
     public Mono<ResponseEntity<ApiResponse<CreateAccountResponse>>> createAccount(
             @RequestBody @Valid CreateAccountRequest request) {
-        return createAccountInteractor.execute(request)
-            .map(dto -> ApiResponse.of(dto, ResponseMessages.ACCOUNT_CREATED))
-            .map(body -> ResponseEntity.status(HttpStatus.CREATED).body(body));
+        return HttpResponses.created(
+                createAccountInteractor.execute(request),
+                ResponseMessages.ACCOUNT_CREATED);
     }
 
     @PostMapping("/{id}/block")
     public Mono<ResponseEntity<ApiResponse<AccountStatusResponse>>> blockAccount(@PathVariable UUID id) {
-        return blockAccountInteractor.execute(id)
-            .map(dto -> ApiResponse.of(dto, ResponseMessages.ACCOUNT_BLOCKED))
-            .map(ResponseEntity::ok);
+        return HttpResponses.ok(
+                blockAccountInteractor.execute(id),
+                ResponseMessages.ACCOUNT_BLOCKED);
+    }
+
+    @GetMapping(value = "/{id}/balance/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<GetAccountBalanceResponse>> streamAccountBalance(@PathVariable UUID id) {
+        return SseEvents.map(streamAccountBalanceInteractor.execute(id), SseEvents.BALANCE);
     }
 }
 ```
 
-Métodos del controller: nombres explícitos (`createAccount`, `getAccountBalance`, `blockAccount`) — mismo criterio que repos (`saveAccount`). Rutas REST: sustantivos plurales + verbo HTTP; acciones de estado como `POST .../block|unblock|close` (no `PATCH .../estado`). Persons: `POST/GET /api/v1/persons`. Seguridad local: `SecurityConfig` permitAll (JWT después).
+Métodos del controller: nombres explícitos (`createAccount`, `getAccountBalance`, `blockAccount`, `streamAccountBalance`) — mismo criterio que repos (`saveAccount`). Rutas REST: sustantivos plurales + verbo HTTP; acciones de estado como `POST .../block|unblock|close` (no `PATCH .../estado`). Persons: `POST/GET /api/v1/persons`. Listado: `GET /accounts?ownerId=`. Seguridad local: `SecurityConfig` permitAll (JWT después). CORS: `CorsConfig` para frontend local.
 
 **DTOs de respuesta Person:** sealed interfaces (`CreatePersonResponse`, `GetPersonByIdResponse`) con implementaciones Client/Employee; omitir nulls con `@JsonInclude(NON_NULL)`. `AccountStatusResponse` mínimo: `id`, `number`, `status`, `balance`.
 
 Jakarta en `CreatePersonRequest`: `@NotBlank` + `@Size(max=100)` en name; `@NotBlank` + `@Email` en email.
+
+**SSE:** UseCase/Interactor → `Flux<DTO>` (`UseCaseWithFluxReturn` / `InteractorWithFluxReturn`). Polling en UseCase (`Flux.interval`). Nombre de evento en `SseEvents` (constante `BALANCE`).
 
 ---
 
@@ -361,8 +384,8 @@ Si hay mismatch de checksum Flyway en local: `docker compose down -v` y recrear 
 - [ ] `*DTOMapper`: MapStruct Domain→Response; Request→Domain rico en método concreto si aplica
 - [ ] RulesValidator con validaciones **con estado** (repos inline)
 - [ ] UseCase solo Domain (sin DTO, sin Entity)
-- [ ] Interactor: DTO→Domain → UseCase → Domain→Response
-- [ ] Controller consume Interactor + `@Valid`
+- [ ] Interactor: DTO→Domain → UseCase → Domain→Response (**sin** HTTP / ApiResponse / SSE)
+- [ ] Controller consume Interactor + `@Valid` + `HttpResponses` / `SseEvents`
 - [ ] Método de negocio explícito (`createAccount`)
 - [ ] Tests dominio + use case (StepVerifier)
 - [ ] Migración Flyway si hay schema nuevo
