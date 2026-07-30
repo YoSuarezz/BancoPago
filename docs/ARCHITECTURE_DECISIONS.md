@@ -101,8 +101,8 @@ backend/src/main/java/com/bancopago/backend/
 │
 ├── infrastructure/
 │   ├── primaryadapters/
-│   │   ├── controller/{module}/          # PersonController, AccountController (@Valid + ApiResponse)
-│   │   └── adapter/response/             # Response / ApiResponse (envelope HTTP)
+│   │   ├── controller/{module}/          # PersonController, AccountController (@Valid + HttpResponses/SseEvents)
+│   │   └── adapter/response/             # ApiResponse, HttpResponses, SseEvents
 │   ├── secondaryadapters/
 │   │   ├── config/                       # SecurityConfig (permitAll local; JWT después)
 │   │   └── r2dbc/
@@ -278,7 +278,7 @@ Controller (@Valid DTO)
 
 | Pieza | Responsabilidad |
 |-------|-----------------|
-| **Interactor** | DTO ↔ Domain (mapper) + delegar al UseCase. No valida con repo ni persiste. |
+| **Interactor** | DTO ↔ Domain (mapper) + delegar al UseCase. Devuelve DTO (o `Flux<DTO>`). No valida con repo, no persiste, **no conoce HTTP**. |
 | **UseCase** | Recibe/devuelve **Domain**. Valida (RulesValidator) → opera → `repository.save/find`. |
 | **RulesValidator** | Solo reglas con estado (unicidad, existencia). Inline con repos. |
 | **Repository** | Puerto Domain in/out. **No** Entity en UseCase. |
@@ -341,7 +341,7 @@ public Mono<Void> validate(AccountDomain account) {
 
 Ubicación: `rulesvalidator/rules/` (interfaces) + `rules/impl/` (implementaciones). Nunca en `domain/`.
 
-Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule`.
+Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule`, `AccountExistsRule`.
 Block/Unblock/Close no usan RulesValidator: cargan la cuenta, aplican el método de dominio y guardan.
 
 Invariantes de dominio (Person): `clientNumber` obligatorio en `ClientDomain`; `position` + `area` obligatorios en `EmployeeDomain`.
@@ -413,7 +413,8 @@ El número de cuenta se genera en el **Interactor** (arma `AccountDomain` comple
 | Controlador | PascalCase + `Controller` | `AccountController` |
 | DTO Request | PascalCase + `Request` | `CreateAccountRequest` |
 | DTO Response (caso de uso) | PascalCase + operación + `Response` | `CreateAccountResponse` |
-| Envelope HTTP | `Response` / `ApiResponse` | `ApiResponse.of(dto)` / `ApiResponse.of(dto, ResponseMessages.X)` |
+| Envelope HTTP | `HttpResponses` + `ApiResponse` | `HttpResponses.created(mono, msg)` / `HttpResponses.ok(mono)` / `okList` |
+| SSE | `SseEvents` | `SseEvents.map(flux, SseEvents.BALANCE)` |
 | Paquetes | minusculas.singular | `domain.account`, `application.usecase` |
 | Métodos de repositorio (puerto) | `verb` + recurso + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
 | Métodos de controller | `verb` + recurso (+ criterio) | `createPerson`, `getAccountBalance`, `blockAccount` |
@@ -446,7 +447,8 @@ No usar un único `PATCH /accounts/{id}/estado`: cada transición es un use case
 - **Helpers:** `TextHelper.applyTrim()`, `ObjectHelper.getDefault()`, `ObjectHelper.requireNonNull()`.
 - **MapStruct** preferente para Domain→Response. Request→Domain rico y Entity↔Domain: manual. Sin Assembler/Factory globales por defecto.
 - **Sin `if (x == null)`** — usar `TextHelper.isBlank()` o `ObjectHelper.requireNonNull()`.
-- **UseCase / Interactor:** interfaz vacía que extiende la base; impl con `execute`. Repos concretos mantienen métodos explícitos (`saveAccount`, `findAccountById`).
+- **UseCase / Interactor:** interfaz vacía que extiende la base; impl con `execute`. Repos concretos mantienen métodos explícitos (`saveAccount`, `findAccountById`). Interactor **no** importa Spring Web (`ApiResponse`, `ServerSentEvent`).
+- **Controller delgado:** solo `@Valid` + llamada al Interactor + `HttpResponses` / `SseEvents`. No armar envelopes inline.
 - **RulesValidator** concentra reglas con acceso a repositorio; el UseCase solo orquesta.
 - **Comentarios:** solo cuando aportan el *porqué* (no narrar el código). En español.
 
@@ -532,10 +534,9 @@ Cada implementación de funcionalidad se mapea a un slice vertical a través de 
 
 **Ejemplo concreto — estado actual:**
 
-Módulo 1 (Person + Account): domain → Controllers REST (`/api/v1/persons`, `/api/v1/accounts` + block/unblock/close), `GlobalExceptionHandler` y `SecurityConfig` (permitAll local) están implementados. Pendiente:
+Módulo 1 (Person + Account): domain → Controllers REST (`/api/v1/persons`, `/api/v1/accounts` + balance/stream + list + block/unblock/close), `HttpResponses`/`SseEvents`, `GlobalExceptionHandler`, CORS y `SecurityConfig` (permitAll local) están implementados. Pendiente:
 
 | Issue | Capas Necesarias |
 |-------|------------------|
-| SSE balance stream | application/usecase + infrastructure/controller |
-| Angular dashboard | frontend/ |
 | JWT real | infrastructure/secondaryadapters/config |
+| Transferencias P2P (Módulo 2) | domain + application + Redis |

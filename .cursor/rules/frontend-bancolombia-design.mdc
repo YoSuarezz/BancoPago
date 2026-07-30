@@ -1,0 +1,63 @@
+---
+description: Frontend BancoPago — design system inspirado en Bancolombia + patrones Angular modernos
+globs: frontend/**/*.{ts,html,scss,css}
+alwaysApply: false
+---
+
+# Frontend BancoPago — Design System & Angular
+
+## Marca (inspirado en Sistema de Diseño Bancolombia)
+
+El DS oficial de Bancolombia es **interno** (Atomic Design + foundations/tokens + librerías web/app). No hay npm público del kit completo. En este proyecto usamos **tokens propios alineados a la marca pública**:
+
+| Token | Uso | Valor guía |
+|-------|-----|------------|
+| `--bp-yellow` | CTAs, acentos, identidad | `#FFD200` |
+| `--bp-yellow-deep` | Hover / énfasis | `#F5C400` |
+| `--bp-ink` | Texto principal | `#1A1A1A` |
+| `--bp-muted` | Texto secundario | `#5C5C5C` |
+| `--bp-surface` | Fondo de página | `#F7F7F5` |
+| `--bp-card` | Superficie de interacción | `#FFFFFF` |
+| `--bp-line` | Bordes sutiles | `#E6E6E3` |
+| `--bp-danger` | Errores | `#B42318` |
+| `--bp-ok` | Estado ACTIVE | `#0E7A3D` |
+
+- Tipografía: **Plus Jakarta Sans** (UI) — no Inter / Roboto / Arial por defecto.
+- Brand first: en pantallas de producto, “BancoPago” / amarillo debe leerse como señal fuerte, no solo nav.
+- Evitar: purple gradients, glow, pills `rounded-full` en exceso, dark mode forzado, layouts “AI slop”.
+- Accesibilidad: contraste AA, focus visible, labels reales (no solo placeholder).
+
+## Arquitectura frontend
+
+- Standalone components + `provideHttpClient`.
+- `core/` (models, services) · `features/` (rutas de negocio).
+- Servicios HTTP hablan con `ApiResponse<T>` del backend; SSE con `EventSource` y evento `balance`.
+- `environment.apiBaseUrl` para el API (CORS ya abierto en backend local).
+
+## Patrones Angular a preferir (2024–2026)
+
+- **Signals** (`signal`, `computed`, `linkedSignal`) para estado de UI; evitar `Map` mutables sin reasignar.
+- Control flow `@if` / `@for` / `@empty` (no `*ngIf` nuevo).
+- `inject()` en vez de constructor DI largo.
+- `takeUntilDestroyed()` para unsubscribe.
+- Formularios reactivos tipados; validación alineada al API (CLIENT → `clientNumber`, EMPLOYEE → `position`+`area`).
+- Motion: 2–3 animaciones intencionales (entrada de lista, pulse suave en saldo live, transición de estado) — no ruido.
+
+## Contratos API (no inventar paths)
+
+- `POST /api/v1/persons`, `GET /api/v1/persons/{id}`
+- `POST /api/v1/accounts`, `GET /api/v1/accounts?ownerId=`
+- `GET /api/v1/accounts/{id}/balance`, `GET .../balance/stream` (SSE event `balance`)
+- `POST .../block|unblock|close`
+
+## SSE
+
+- Abrir stream con **accountId** (no personId / ownerId).
+- Si EventSource falla: mensaje claro; no confundir ownerId con accountId.
+- Cerrar `EventSource` en destroy / al recargar lista.
+
+## Qué no hacer
+
+- No hardcodear strings de éxito del backend en el front como fuente de verdad.
+- No poner lógica de negocio bancaria en componentes (va en services / future stores).
+- No copiar Material azure-blue por defecto como “marca”.

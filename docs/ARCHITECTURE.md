@@ -44,8 +44,8 @@ Controller (infra)
 
 | Pieza | Qué hace | Qué NO hace |
 |-------|----------|-------------|
-| **Controller** | HTTP + `@Valid` → llama Interactor | Lógica de negocio, repos |
-| **Interactor** | Map DTO→Domain; llama UseCase; map Domain→Response | Validar con repo, persistir |
+| **Controller** | HTTP + `@Valid` → llama Interactor → `HttpResponses` / `SseEvents` | Lógica de negocio, repos, armar envelopes a mano |
+| **Interactor** | Map DTO→Domain; llama UseCase; map Domain→Response (DTO puro) | Validar con repo, persistir, conocer `ApiResponse` / `ServerSentEvent` / HTTP |
 | **UseCase** | RulesValidator → dominio → Repository (Domain) | Conocer DTOs ni Entity |
 | **RulesValidator** | Validaciones con estado (repos) + excepciones tipadas | Reglas puras de VO; persistir |
 | **Repository** | Persistencia / lectura reactiva (Domain) | Conocer DTOs ni HTTP |
@@ -107,11 +107,24 @@ Igual patrón para `UnblockAccount` (`unblock`) y `CloseAccount` (`close`). Tran
 | GET | `/api/v1/persons/{id}` | `GetPersonByIdInteractor` → 200 |
 | POST | `/api/v1/accounts` | `CreateAccountInteractor` → 201 |
 | GET | `/api/v1/accounts/{id}/balance` | `GetAccountBalanceInteractor` → 200 |
+| GET | `/api/v1/accounts/{id}/balance/stream` | `StreamAccountBalanceInteractor` → SSE (`text/event-stream`) |
+| GET | `/api/v1/accounts?ownerId={uuid}` | `ListAccountsByOwnerInteractor` → 200 |
 | POST | `/api/v1/accounts/{id}/block` | `BlockAccountInteractor` → 200 |
 | POST | `/api/v1/accounts/{id}/unblock` | `UnblockAccountInteractor` → 200 |
 | POST | `/api/v1/accounts/{id}/close` | `CloseAccountInteractor` → 200 |
 
-Respuesta de éxito: `ApiResponse<T>` (`data` + `messages`). Mensajes de éxito en español vía constantes en `infrastructure/ResponseMessages` (no literales en el controller). Errores: `GlobalExceptionHandler` → `{ code, message, messages }`.
+Respuesta de éxito: `ApiResponse<T>` (`data` + `messages`) vía `HttpResponses` (created/ok/okList). Mensajes de éxito en español vía `infrastructure/ResponseMessages`. SSE vía `SseEvents.map(flux, SseEvents.BALANCE)`. Errores: `GlobalExceptionHandler` → `{ code, message, messages }`.
+
+**Contrato del Controller (delgado):**
+```
+return HttpResponses.created(interactor.execute(request), ResponseMessages.X);
+return HttpResponses.ok(interactor.execute(id));
+return HttpResponses.ok(interactor.execute(id), ResponseMessages.X);
+return HttpResponses.okList(interactor.execute(ownerId));
+return SseEvents.map(interactor.execute(id), SseEvents.BALANCE);
+```
+
+**Por qué el envoltorio NO va en el Interactor:** `ApiResponse`, `ResponseEntity` y `ServerSentEvent` son detalles del adaptador HTTP. El Interactor debe poder reutilizarse desde otro primary adapter (CLI, gRPC, mensaje) sin arrastrar Spring Web. Los helpers viven en `infrastructure/primaryadapters/adapter/response/`.
 
 Responses tipados por subtipo: `CreatePersonResponse` / `GetPersonByIdResponse` son `sealed interface` → `CreateClientResponse` / `CreateEmployeeResponse` (y equivalentes Get). Campos ajenos al tipo no se serializan (`@JsonInclude(NON_NULL)`). `AccountStatusResponse` solo incluye `id`, `number`, `status`, `balance`.
 
@@ -123,6 +136,8 @@ No hay un `PATCH .../estado` único: bloqueo, desbloqueo y cierre son endpoints/
 |----------|--------|
 | CreatePerson | `UniqueDocumentRule`, `UniqueEmailRule` |
 | CreateAccount | `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule` |
+| ListAccountsByOwner | (ninguna; lectura por owner) |
+| StreamAccountBalance | `AccountExistsRule` (vía `StreamAccountBalanceRulesValidator`) |
 | Block / Unblock / Close Account | (ninguna; invariantes en Domain + NotFound en UseCase) |
 
 ---
@@ -255,7 +270,7 @@ com.bancopago.backend/
 ├── infrastructure/
 │   ├── primaryadapters/
 │   │   ├── controller/{module}/
-│   │   └── adapter/response/         # Response / ApiResponse wrappers
+│   │   └── adapter/response/         # ApiResponse, HttpResponses, SseEvents
 │   ├── secondaryadapters/
 │   │   └── r2dbc/{module|config}/
 │   ├── GlobalExceptionHandler.java
@@ -265,6 +280,8 @@ com.bancopago.backend/
 ```
 
 **Persistencia Person (subtipos):** columnas `client_number`, `membership_date`, `position`, `area`, `cost_center`, `contract_type` (V2). Unicidad de documento = `(document_type, document_number)` (V3), alineada con `UniqueDocumentRule`. `document_number` es `VARCHAR(30)` (alineado con VO).
+
+**SSE:** UseCase/Interactor emiten `Flux<DTO>`; el Controller nombra el evento con `SseEvents` (`BALANCE = "balance"`). Polling cada 5s en `StreamAccountBalanceUseCaseImpl` (pub/sub Redis → Módulo 2).
 
 ---
 

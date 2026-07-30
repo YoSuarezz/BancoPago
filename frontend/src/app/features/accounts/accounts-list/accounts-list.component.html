@@ -1,0 +1,235 @@
+<section class="desk">
+  <header class="desk__hero">
+    <p class="desk__kicker">BancoPago</p>
+    <h1>Tus cuentas</h1>
+    <p class="desk__lead">
+      Selecciona una persona, abre productos y sigue el saldo en vivo con SSE.
+    </p>
+  </header>
+
+  <nav class="desk__tabs" aria-label="Flujos de cuentas">
+    <button
+      type="button"
+      class="tab"
+      [class.tab--active]="activePanel() === 'people'"
+      (click)="setPanel('people')"
+    >
+      Personas y cuentas
+    </button>
+    <button
+      type="button"
+      class="tab"
+      [class.tab--active]="activePanel() === 'register'"
+      (click)="setPanel('register')"
+    >
+      Registrar persona
+    </button>
+    <button
+      type="button"
+      class="tab"
+      [class.tab--active]="activePanel() === 'open-account'"
+      (click)="setPanel('open-account')"
+    >
+      Abrir cuenta
+    </button>
+  </nav>
+
+  @if (errorMessage()) {
+    <p class="banner banner--error" role="alert">{{ errorMessage() }}</p>
+  }
+  @if (successMessage()) {
+    <p class="banner banner--ok" role="status">{{ successMessage() }}</p>
+  }
+
+  @if (activePanel() === 'people') {
+    <section class="panel">
+      <form class="grid" [formGroup]="personSearchForm">
+        <label class="field">
+          <span>Buscar por nombre</span>
+          <input
+            formControlName="name"
+            placeholder="Ej. Ana Gomez"
+            (input)="onSearchNameInput()"
+          />
+        </label>
+        <label class="field">
+          <span>Tipo de persona</span>
+          <select formControlName="personType" (change)="onPersonTypeFilterChange()">
+            <option value="ALL">Todas</option>
+            <option value="CLIENT">Cliente</option>
+            <option value="EMPLOYEE">Empleado</option>
+          </select>
+        </label>
+      </form>
+
+      <div class="people-list">
+        @if (loadingPeople()) {
+          <p class="empty">Cargando personas...</p>
+        } @else {
+          @for (candidate of personPage().content; track candidate.id) {
+            <button
+              type="button"
+              class="person-card"
+              [class.person-card--active]="selectedPerson()?.id === candidate.id"
+              (click)="selectPerson(candidate)"
+            >
+              <p class="person-card__name">{{ candidate.name }}</p>
+              <p class="person-card__meta">
+                {{ personTypeLabel(candidate.personType) }} ·
+                {{ documentTypeLabel(candidate.documentType) }} {{ candidate.documentNumber }}
+              </p>
+            </button>
+          } @empty {
+            <p class="empty">No hay personas registradas con ese filtro.</p>
+          }
+        }
+      </div>
+
+      <app-paginator
+        [page]="personPage().page"
+        [totalPages]="personPage().totalPages"
+        (pageChange)="onPersonsPageChange($event)"
+      />
+    </section>
+  }
+
+  @if (activePanel() === 'register') {
+    <form class="panel" [formGroup]="registerForm" (ngSubmit)="registerPerson()">
+      <div class="grid">
+        <label class="field">
+          <span>Nombre</span>
+          <input formControlName="name" />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input formControlName="email" type="email" />
+        </label>
+        <label class="field">
+          <span>Documento</span>
+          <input formControlName="documentNumber" />
+        </label>
+        <label class="field">
+          <span>Tipo doc.</span>
+          <select formControlName="documentType">
+            <option value="CC">CC</option>
+            <option value="CE">CE</option>
+            <option value="NIT">NIT</option>
+            <option value="PASSPORT">PASSPORT</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Teléfono</span>
+          <input formControlName="phone" />
+        </label>
+        <label class="field">
+          <span>Tipo persona</span>
+          <select formControlName="personType">
+            <option value="CLIENT">Cliente</option>
+            <option value="EMPLOYEE">Empleado</option>
+          </select>
+        </label>
+        @if (registerForm.controls.personType.value === 'EMPLOYEE') {
+          <label class="field">
+            <span>Cargo</span>
+            <input formControlName="position" />
+          </label>
+          <label class="field">
+            <span>Área</span>
+            <input formControlName="area" />
+          </label>
+        }
+      </div>
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Creando…' : 'Crear persona' }}
+      </button>
+    </form>
+  }
+
+  @if (activePanel() === 'open-account') {
+    <form class="panel" [formGroup]="accountForm" (ngSubmit)="openAccount()">
+      <p class="hint">Persona seleccionada: <strong>{{ selectedPerson()?.name || 'Sin seleccionar' }}</strong></p>
+      <label class="field">
+        <span>Tipo de cuenta</span>
+        <select formControlName="type">
+          <option value="SAVINGS">Ahorros</option>
+          <option value="CHECKING">Corriente</option>
+          <option value="PAYROLL">Nomina</option>
+          <option value="TREASURY">Tesoreria</option>
+          <option value="SUPPLIER">Proveedor</option>
+        </select>
+      </label>
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Abriendo…' : 'Abrir cuenta' }}
+      </button>
+    </form>
+  }
+
+  @if (selectedPerson(); as p) {
+    <aside class="person" aria-label="Persona activa">
+      <div>
+        <p class="person__name">{{ p.name }}</p>
+        <p class="person__meta">
+          {{ personTypeLabel(p.personType) }} · {{ documentTypeLabel(p.documentType) }} {{ p.documentNumber }}
+        </p>
+      </div>
+      <button type="button" class="btn btn--ghost" (click)="setPanel('open-account')">Abrir cuenta para esta persona</button>
+    </aside>
+  }
+
+  <div class="accounts" aria-live="polite">
+    @if (loading()) {
+      <p class="empty">Cargando cuentas…</p>
+    } @else {
+      <div class="account-filters">
+        <button type="button" class="chip" [class.chip--active]="selectedAccountTypeFilter() === 'ALL'" (click)="setAccountTypeFilter('ALL')">Todos los tipos</button>
+        <button type="button" class="chip" [class.chip--active]="selectedAccountTypeFilter() === 'SAVINGS'" (click)="setAccountTypeFilter('SAVINGS')">Ahorros</button>
+        <button type="button" class="chip" [class.chip--active]="selectedAccountTypeFilter() === 'CHECKING'" (click)="setAccountTypeFilter('CHECKING')">Corriente</button>
+        <button type="button" class="chip" [class.chip--active]="selectedAccountStatusFilter() === 'ALL'" (click)="setAccountStatusFilter('ALL')">Todos los estados</button>
+        <button type="button" class="chip" [class.chip--active]="selectedAccountStatusFilter() === 'ACTIVE'" (click)="setAccountStatusFilter('ACTIVE')">Activas</button>
+        <button type="button" class="chip" [class.chip--active]="selectedAccountStatusFilter() === 'BLOCKED'" (click)="setAccountStatusFilter('BLOCKED')">Bloqueadas</button>
+      </div>
+
+      @for (account of filteredAccounts(); track account.id; let i = $index) {
+        <article class="account" [style.animation-delay.ms]="i * 70">
+          <header class="account__top">
+            <div>
+              <p class="account__type">{{ typeLabel(account.type) }}</p>
+              <p class="account__number">{{ account.number }}</p>
+            </div>
+            <span
+              class="status"
+              [class.status--live]="isLive(account.id)"
+              [class.status--ok]="statusFor(account) === 'ACTIVE'"
+            >
+              {{ statusLabel(statusFor(account)) }}
+              @if (isLive(account.id)) {
+                <span class="live-dot" aria-hidden="true"></span>
+              }
+            </span>
+          </header>
+
+          <p class="account__balance">
+            {{ balanceFor(account) | currency: account.currency : 'symbol-narrow' : '1.0-2' }}
+          </p>
+          <p class="account__live-label">
+            @if (isLive(account.id)) {
+              Saldo en vivo · SSE
+            } @else {
+              Esperando primer evento SSE…
+            }
+          </p>
+
+          @if (streamHints()[account.id]; as hint) {
+            <p class="stream-error">{{ hint }}</p>
+          }
+        </article>
+      } @empty {
+        @if (selectedPerson()) {
+          <p class="empty">No hay cuentas para esta persona con los filtros actuales.</p>
+        } @else {
+          <p class="empty">Selecciona una persona para consultar cuentas.</p>
+        }
+      }
+    }
+  </div>
+</section>

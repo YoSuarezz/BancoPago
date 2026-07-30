@@ -1,0 +1,48 @@
+.shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.35rem;
+  border-bottom: 1px solid rgba(26, 26, 26, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--bp-ink);
+  text-decoration: none;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 1.05rem;
+}
+
+.shell__mark {
+  width: 0.85rem;
+  height: 0.85rem;
+  background: var(--bp-yellow);
+  border: 2px solid var(--bp-ink);
+}
+
+.shell__nav a {
+  color: var(--bp-muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.shell__nav a.is-active,
+.shell__nav a:hover {
+  color: var(--bp-ink);
+}
+
+.shell__main {
+  min-height: calc(100vh - 58px);
+}
