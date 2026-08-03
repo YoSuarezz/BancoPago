@@ -1,6 +1,7 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc;
 
 import com.bancopago.backend.TestcontainersConfiguration;
+import com.bancopago.backend.application.model.PersonQuery;
 import com.bancopago.backend.application.secondaryports.repository.AccountRepository;
 import com.bancopago.backend.application.secondaryports.repository.PersonRepository;
 import com.bancopago.backend.domain.account.AccountDomain;
@@ -160,6 +161,39 @@ class PersonAccountR2dbcAdapterTest {
 
         StepVerifier.create(accountRepository.existsAccountByNumber("2000000001"))
                 .expectNext(true)
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("should find persons by name ignoring case when paginating")
+    void shouldFindPersonsPageByNameIgnoreCase() {
+        var client = new ClientDomain(
+                "Ana Gomez",
+                new DocumentNumber(DocumentType.CC, "111222333"),
+                new Email("ana.case@example.com"),
+                "3009998877",
+                "CLI-CASE"
+        );
+
+        StepVerifier.create(
+                        personRepository.savePerson(client)
+                                .then(personRepository.findPersonsPage(
+                                        new PersonQuery(0, 10, "name", "ASC", "ana gomez", null)))
+                )
+                .assertNext(page -> {
+                    assertEquals(1, page.content().size());
+                    assertEquals("Ana Gomez", page.content().getFirst().getName());
+                })
+                .verifyComplete();
+
+        StepVerifier.create(
+                        personRepository.findPersonsPage(
+                                new PersonQuery(0, 10, "name", "ASC", "ANA", null))
+                )
+                .assertNext(page -> {
+                    assertEquals(1, page.content().size());
+                    assertEquals("Ana Gomez", page.content().getFirst().getName());
+                })
                 .verifyComplete();
     }
 

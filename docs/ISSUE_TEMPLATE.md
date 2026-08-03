@@ -51,13 +51,16 @@ application/
   │   ├── dto/{module}/request|response/
   │   ├── interactor/{module}/(+ impl/)
   │   └── mapper/{module}/
-  ├── secondaryports/
-  │   ├── entity/ repository/ mapper/
+  ├── secondaryports/repository/          # solo interfaces (puertos de salida)
   └── usecase/{module}/
       ├── {UseCase}.java + impl/
       └── rulesvalidator/(+ impl/ + rules/ si 2+ Rule)
 
-infrastructure/primaryadapters/controller/{module}/
+infrastructure/
+  ├── primaryadapters/controller/{module}/
+  └── secondaryadapters/r2dbc/
+      ├── entity/ mapper/
+      └── {module}/                       # Adapter + Spring Data repo
 ```
 
 **Flujo a respetar:**

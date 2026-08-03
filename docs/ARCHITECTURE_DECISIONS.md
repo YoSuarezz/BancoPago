@@ -1,7 +1,7 @@
 # Decisiones de Arquitectura — BancoPago
 
 *Versión: 2.0*
-*Última actualización: Julio 2026*
+*Última actualización: Agosto 2026*
 *Idioma: Español (documentación), columnas BD en inglés, mensajes de error en español*
 
 ---
@@ -24,6 +24,21 @@ crosscutting  →  domain  →  application  →  infrastructure
 - **application** → Solo depende de domain.
 - **infrastructure** → Implementa puertos de application + domain.
 - **crosscutting** → Helpers, excepciones base, ErrorCode. Disponible para todas las capas.
+
+### Puertos secundarios (`secondaryports`)
+
+`application/secondaryports/` contiene **únicamente interfaces** de repositorio (`repository/`).
+Son contratos de salida que los use cases consumen; hablan en términos de **Domain**
+(`Mono<AccountDomain>`, `Flux<PersonDomain>`, etc.).
+
+| Pieza | Ubicación | Motivo |
+|-------|-----------|--------|
+| Puerto de repo (`AccountRepository`) | `application/secondaryports/repository/` | Application define *qué* necesita de persistencia |
+| Entidad R2DBC (`AccountEntity`) | `infrastructure/secondaryadapters/r2dbc/entity/` | Depende de Spring Data; detalle del adaptador |
+| Mapper Entity↔Domain | `infrastructure/secondaryadapters/r2dbc/mapper/` | Solo lo usa el adapter R2DBC |
+| Adapter (`AccountR2dbcAdapter`) | `infrastructure/secondaryadapters/r2dbc/{module}/` | Implementa el puerto; traduce Domain ↔ Entity |
+
+Los use cases **nunca** importan `*Entity`. El adapter es el único que conoce ambos modelos.
 
 ### Elección del Stack Reactivo
 
@@ -88,9 +103,7 @@ backend/src/main/java/com/bancopago/backend/
 │   │   ├── interactor/{module}/(+ impl/) # Puerto de entrada (Controller → aquí)
 │   │   └── mapper/{module}/              # MapStruct DTO ↔ Domain
 │   ├── secondaryports/
-│   │   ├── entity/                       # Entidades R2DBC @Table
-│   │   ├── repository/                   # Puertos de repositorio reactivos
-│   │   └── mapper/                       # Mapeo manual Entity ↔ Domain
+│   │   └── repository/                   # Puertos de repositorio reactivos (Domain in/out)
 │   └── usecase/
 │       ├── Rule.java                     # Regla granular (Mono<Void>)
 │       ├── RulesValidator.java
@@ -106,6 +119,8 @@ backend/src/main/java/com/bancopago/backend/
 │   ├── secondaryadapters/
 │   │   ├── config/                       # SecurityConfig (permitAll local; JWT después)
 │   │   └── r2dbc/
+│   │       ├── entity/                   # Entidades R2DBC @Table (detalle del adaptador)
+│   │       ├── mapper/                   # Mapeo manual Entity ↔ Domain
 │   │       ├── {module}/                 # Adapter + Spring Data repo
 │   │       └── config/                   # Persistable callbacks, etc.
 │   ├── GlobalExceptionHandler.java       # DomainException → HTTP status
@@ -223,7 +238,7 @@ public class AccountBlockedException extends DomainException {
 |-----------|-------------|-------|
 | **Domain → Response** | **MapStruct** (`abstract class @Mapper`) | Mapeo casi 1:1; renombres/`ignore`; crece con más endpoints |
 | **Request → Domain** (VOs/herencia) | Método **concreto** en el mismo `*DTOMapper` | Actúa como factory de aplicación; MapStruct no genera bien Client/Employee + VOs |
-| **Entity ↔ Domain** | **Manual** (`@Component`) | VOs, `PersonDomain` abstracta, enums como `String` |
+| **Entity ↔ Domain** | **Manual** (`@Component` en `infrastructure/.../r2dbc/mapper/`) | VOs, `PersonDomain` abstracta, enums como `String` |
 
 **No** forzar MapStruct en Entity↔Domain ni en Request→Domain rico.  
 **No** adoptar Assembler/Factory como convención global: solo si un Response junta varios agregados (`*ResponseAssembler`) o el `toPersonDomain` de Person crece demasiado (`PersonDomainFactory` en application).
@@ -243,6 +258,9 @@ public AccountDomain toAccountDomain(AccountEntity entity) {
 ```
 
 ### 3.5 Patrón de Entidad (R2DBC)
+
+Ubicación: `infrastructure/secondaryadapters/r2dbc/entity/`. No va en `secondaryports` porque
+acopla la capa de aplicación a Spring Data R2DBC.
 
 ```java
 @Table("account")

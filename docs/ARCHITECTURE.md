@@ -25,8 +25,8 @@ Controller (infra primary adapter)
 | Capa | Depende de | Contiene |
 |------|------------|----------|
 | **Domain** | Nada (Java puro) | Entidades, VOs, enums, excepciones, `*Error` |
-| **Application** | Domain | Interactors, UseCases, RulesValidators, `Rule`, DTOs, mappers, puertos de repo |
-| **Infrastructure** | Application + Domain | Controllers, adapters R2DBC, seguridad, `GlobalExceptionHandler` |
+| **Application** | Domain | Interactors, UseCases, RulesValidators, `Rule`, DTOs, mappers DTO, **puertos de repo** (`secondaryports/repository/`) |
+| **Infrastructure** | Application + Domain | Controllers, adapters R2DBC (entity, mapper, Spring Data repo), seguridad, `GlobalExceptionHandler` |
 
 ---
 
@@ -256,8 +256,9 @@ No hay Assembler/Factory como convención global: solo si un Response combina va
 com.bancopago.backend/
 ├── domain/
 ├── application/
-│   ├── primaryports/ ...
-│   ├── secondaryports/ ...
+│   ├── primaryports/ ...                 # dto, interactor, mapper (MapStruct DTO↔Domain)
+│   ├── secondaryports/
+│   │   └── repository/                   # interfaces reactivas (Domain in/out)
 │   └── usecase/
 │       ├── Rule.java
 │       ├── RulesValidator.java
@@ -272,7 +273,11 @@ com.bancopago.backend/
 │   │   ├── controller/{module}/
 │   │   └── adapter/response/         # ApiResponse, HttpResponses, SseEvents
 │   ├── secondaryadapters/
-│   │   └── r2dbc/{module|config}/
+│   │   └── r2dbc/
+│   │       ├── entity/                   # AccountEntity, PersonEntity (@Table)
+│   │       ├── mapper/                   # Entity↔Domain (manual)
+│   │       ├── {module}/                 # *R2dbcAdapter + *R2dbcRepository
+│   │       └── config/
 │   ├── GlobalExceptionHandler.java
 │   ├── ErrorResponse.java
 │   └── ResponseMessages.java         # constantes de mensajes de éxito (español)

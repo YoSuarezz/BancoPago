@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { Person } from '../models/person.model';
 import { ApiResponse } from '../models/api-response.model';
@@ -52,17 +52,17 @@ export class PersonService {
   }
 
   search(query: PersonSearchQuery): Observable<PageResponse<Person>> {
-    const params: Record<string, string> = {
-      page: String(query.page ?? 0),
-      size: String(query.size ?? 8),
-      sortBy: query.sortBy ?? 'name',
-      sortDirection: query.sortDirection ?? 'ASC',
-    };
+    let params = new HttpParams()
+      .set('page', String(query.page ?? 0))
+      .set('size', String(query.size ?? 8))
+      .set('sortBy', query.sortBy ?? 'name')
+      .set('sortDirection', query.sortDirection ?? 'ASC');
+
     if (query.name?.trim()) {
-      params.name = query.name.trim();
+      params = params.set('name', query.name.trim());
     }
     if (query.personType) {
-      params.personType = query.personType;
+      params = params.set('personType', query.personType);
     }
 
     return this.http.get<PageResponse<Person>>(`${this.baseUrl}/search`, { params });
