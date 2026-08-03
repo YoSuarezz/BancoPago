@@ -108,7 +108,9 @@ public class PersonR2dbcAdapter implements PersonRepository {
         List<Criteria> filters = new java.util.ArrayList<>();
 
         if (!TextHelper.isBlank(request.name())) {
-            filters.add(Criteria.where("name").like("%" + escapeLike(request.name().trim()) + "%"));
+            filters.add(Criteria.where("name")
+                    .like("%" + escapeLike(request.name().trim()) + "%")
+                    .ignoreCase(true));
         }
         if (request.personType() != null) {
             filters.add(Criteria.where("person_type").is(request.personType().name()));

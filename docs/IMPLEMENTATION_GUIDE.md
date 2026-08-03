@@ -119,10 +119,14 @@ public interface AccountRepository {
 
 | Pieza | Ubicación |
 |-------|-----------|
-| Entity | `application/secondaryports/entity/` |
-| Mapper Entity↔Domain | `application/secondaryports/mapper/` (**manual**) |
+| Entity R2DBC | `infrastructure/secondaryadapters/r2dbc/entity/` |
+| Mapper Entity↔Domain | `infrastructure/secondaryadapters/r2dbc/mapper/` (**manual**) |
 | Spring Data repo | `infrastructure/secondaryadapters/r2dbc/{module}/` |
 | Adapter que implementa el puerto | `infrastructure/secondaryadapters/r2dbc/{module}/` |
+
+`secondaryports` solo contiene **interfaces** de repositorio (`repository/`). Las entidades R2DBC
+dependen de Spring Data (`@Table`, `@Column`, `Persistable`) y son detalle del adaptador, no del
+contrato de aplicación — por eso viven en infraestructura junto al adapter que las usa.
 
 Entity: `@Table`, constructor antinulos, `create()` estáticos, setters con helpers.
 
