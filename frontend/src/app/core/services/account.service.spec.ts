@@ -35,7 +35,7 @@ describe('AccountService', () => {
     ];
 
     service.listByOwner(ownerId).subscribe((result) => {
-      expect(result.length).toBe(1);
+      expect(result).toHaveLength(1);
       expect(result[0].number).toBe('5300000001');
     });
 
