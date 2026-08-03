@@ -33,6 +33,11 @@ const EMPTY_PAGE: PageResponse<Person> = {
   totalPages: 0,
 };
 
+type AccountTypeValue = 'SAVINGS' | 'CHECKING' | 'PAYROLL' | 'TREASURY' | 'SUPPLIER';
+type AccountTypeFilter = 'ALL' | AccountTypeValue;
+type AccountStatusValue = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'SEIZED' | 'CLOSED';
+type AccountStatusFilter = 'ALL' | AccountStatusValue;
+
 @Component({
   selector: 'app-accounts-list',
   standalone: true,
@@ -58,8 +63,8 @@ export class AccountsListComponent implements OnInit, OnDestroy {
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
   readonly streamHints = signal<Record<string, string>>({});
-  readonly selectedAccountTypeFilter = signal<'ALL' | string>('ALL');
-  readonly selectedAccountStatusFilter = signal<'ALL' | string>('ALL');
+  readonly selectedAccountTypeFilter = signal<AccountTypeFilter>('ALL');
+  readonly selectedAccountStatusFilter = signal<AccountStatusFilter>('ALL');
 
   readonly filteredAccounts = computed(() => {
     return this.accounts().filter((account) => {
@@ -274,11 +279,11 @@ export class AccountsListComponent implements OnInit, OnDestroy {
     return !!this.liveBalances()[accountId];
   }
 
-  setAccountTypeFilter(type: 'ALL' | string): void {
+  setAccountTypeFilter(type: AccountTypeFilter): void {
     this.selectedAccountTypeFilter.set(type);
   }
 
-  setAccountStatusFilter(status: 'ALL' | string): void {
+  setAccountStatusFilter(status: AccountStatusFilter): void {
     this.selectedAccountStatusFilter.set(status);
   }
 

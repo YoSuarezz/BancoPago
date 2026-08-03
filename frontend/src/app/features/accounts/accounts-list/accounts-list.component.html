@@ -38,7 +38,7 @@
     <p class="banner banner--error" role="alert">{{ errorMessage() }}</p>
   }
   @if (successMessage()) {
-    <p class="banner banner--ok" role="status">{{ successMessage() }}</p>
+    <output class="banner banner--ok">{{ successMessage() }}</output>
   }
 
   @if (activePanel() === 'people') {
