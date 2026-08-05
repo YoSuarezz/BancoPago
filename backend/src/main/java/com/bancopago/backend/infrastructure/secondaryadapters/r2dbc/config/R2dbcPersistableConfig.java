@@ -1,7 +1,7 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.config;
 
-import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
-import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.AccountEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.PersonEntity;
 import org.reactivestreams.Publisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

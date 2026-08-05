@@ -84,7 +84,7 @@ public class AccountDomain extends BaseDomain {
         if (this.status == AccountStatus.BLOCKED) {
             throw AccountBlockedException.create(getId());
         }
-        if (this.status == AccountStatus.INACTIVE) {
+        if (this.status == AccountStatus.INACTIVE || this.status == AccountStatus.SEIZED) {
             throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.OPERATE);
         }
     }

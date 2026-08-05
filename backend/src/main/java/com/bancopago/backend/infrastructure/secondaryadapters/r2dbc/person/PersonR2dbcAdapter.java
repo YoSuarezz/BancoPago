@@ -1,7 +1,7 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.person;
 
-import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
-import com.bancopago.backend.application.secondaryports.mapper.PersonEntityMapper;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.PersonEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.mapper.PersonEntityMapper;
 import com.bancopago.backend.application.secondaryports.repository.PersonRepository;
 import com.bancopago.backend.domain.person.PersonDomain;
 import org.springframework.stereotype.Component;

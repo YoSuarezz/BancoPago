@@ -5,6 +5,7 @@ import com.bancopago.backend.application.usecase.person.CreatePersonUseCase;
 import com.bancopago.backend.application.usecase.person.rulesvalidator.CreatePersonRulesValidator;
 import com.bancopago.backend.domain.person.PersonDomain;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -20,6 +21,7 @@ public class CreatePersonUseCaseImpl implements CreatePersonUseCase {
     }
 
     @Override
+    @Transactional
     public Mono<PersonDomain> execute(PersonDomain person) {
         return rulesValidator.validate(person)
                 .then(Mono.defer(() -> personRepository.savePerson(person)));

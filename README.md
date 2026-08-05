@@ -13,7 +13,7 @@ Pagos Digitales.
 
 ## Stack Tecnológico
 
-**Backend:** Spring Boot 3.x · WebFlux · R2DBC · PostgreSQL 16 · Redis · Flyway
+**Backend:** Spring Boot 4.1 · WebFlux · R2DBC · PostgreSQL 16 · Redis · Flyway
 **Frontend:** Angular 18 · RxJS · Angular Material
 **Testing:** JUnit 5 · Mockito · StepVerifier · Jest · Playwright · Karate · JMeter
 **Infraestructura:** Docker Compose

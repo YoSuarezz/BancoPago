@@ -1,4 +1,4 @@
-package com.bancopago.backend.application.secondaryports.entity;
+package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity;
 
 import com.bancopago.backend.crosscutting.helpers.ObjectHelper;
 import com.bancopago.backend.crosscutting.helpers.TextHelper;

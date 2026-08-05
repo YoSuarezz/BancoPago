@@ -1,6 +1,6 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.person;
 
-import com.bancopago.backend.application.secondaryports.entity.PersonEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.PersonEntity;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
