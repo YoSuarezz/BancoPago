@@ -1,6 +1,9 @@
 package com.bancopago.backend.infrastructure;
 
 import com.bancopago.backend.crosscutting.exception.DomainException;
+import com.bancopago.backend.domain.auth.exceptions.DuplicateUserEmailException;
+import com.bancopago.backend.domain.auth.exceptions.InvalidCredentialsException;
+import com.bancopago.backend.domain.auth.exceptions.UserNotFoundException;
 import com.bancopago.backend.domain.account.exceptions.AccountBlockedException;
 import com.bancopago.backend.domain.account.exceptions.AccountNotFoundException;
 import com.bancopago.backend.domain.account.exceptions.DuplicateAccountException;
@@ -32,9 +35,15 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleUnauthorized(DomainException ex) {
+        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(toError(ex)));
+    }
+
     @ExceptionHandler({
             PersonNotFoundException.class,
-            AccountNotFoundException.class
+            AccountNotFoundException.class,
+            UserNotFoundException.class
     })
     public Mono<ResponseEntity<ErrorResponse>> handleNotFound(DomainException ex) {
         return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(toError(ex)));
@@ -46,7 +55,8 @@ public class GlobalExceptionHandler {
             DuplicateAccountException.class,
             DuplicateAccountTypeException.class,
             AccountBlockedException.class,
-            MaxAccountsExceededException.class
+            MaxAccountsExceededException.class,
+            DuplicateUserEmailException.class
     })
     public Mono<ResponseEntity<ErrorResponse>> handleConflict(DomainException ex) {
         return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body(toError(ex)));
