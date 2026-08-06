@@ -5,6 +5,7 @@ import com.bancopago.backend.application.usecase.account.CreateAccountUseCase;
 import com.bancopago.backend.application.usecase.account.rulesvalidator.CreateAccountRulesValidator;
 import com.bancopago.backend.domain.account.AccountDomain;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -20,6 +21,7 @@ public class CreateAccountUseCaseImpl implements CreateAccountUseCase {
     }
 
     @Override
+    @Transactional
     public Mono<AccountDomain> execute(AccountDomain account) {
         return rulesValidator.validate(account)
                 .then(Mono.defer(() -> accountRepository.saveAccount(account)));

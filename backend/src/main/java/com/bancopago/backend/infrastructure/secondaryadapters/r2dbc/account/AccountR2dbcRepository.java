@@ -1,6 +1,6 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.account;
 
-import com.bancopago.backend.application.secondaryports.entity.AccountEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.AccountEntity;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
