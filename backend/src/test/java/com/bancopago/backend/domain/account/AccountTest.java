@@ -159,6 +159,14 @@ class AccountTest {
         }
 
         @Test
+        @DisplayName("should not close account with positive balance")
+        void shouldNotCloseAccountWithPositiveBalance() {
+            account.deposit(new BigDecimal("100"));
+            assertThrows(InvalidAccountException.class, () -> account.close());
+            assertEquals(AccountStatus.ACTIVE, account.getStatus());
+        }
+
+        @Test
         @DisplayName("should close blocked account")
         void shouldCloseBlockedAccount() {
             account.block();

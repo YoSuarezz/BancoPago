@@ -11,7 +11,13 @@ public enum PersonError implements ErrorCode {
     EMAIL_EMPTY("El correo electrónico no puede estar vacío"),
     EMAIL_INVALID("El formato del correo electrónico no es válido"),
     EMAIL_EXCEEDED("El correo electrónico excede los %d caracteres permitidos"),
-    TYPE_REQUIRED("El tipo de persona es requerido");
+    TYPE_REQUIRED("El tipo de persona es requerido"),
+    CLIENT_NUMBER_REQUIRED("El número de cliente es requerido"),
+    POSITION_REQUIRED("El cargo del empleado es requerido"),
+    AREA_REQUIRED("El área del empleado es requerida"),
+    NOT_FOUND("No se encontró la persona con id %s"),
+    DOCUMENT_ALREADY_EXISTS("Ya existe una persona con el documento %s"),
+    EMAIL_ALREADY_EXISTS("Ya existe una persona con el correo electrónico %s");
 
     private final String messageTemplate;
 

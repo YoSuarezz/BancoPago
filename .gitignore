@@ -25,6 +25,7 @@ frontend/coverage/
 # IDE
 .idea/
 .vscode/
+.cursor
 
 # Secrets
 .env

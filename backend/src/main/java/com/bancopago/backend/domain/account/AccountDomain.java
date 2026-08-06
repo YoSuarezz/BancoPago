@@ -3,12 +3,12 @@ package com.bancopago.backend.domain.account;
 import com.bancopago.backend.crosscutting.helpers.ObjectHelper;
 import com.bancopago.backend.domain.BaseDomain;
 import com.bancopago.backend.domain.account.exceptions.AccountBlockedException;
-import com.bancopago.backend.domain.account.exceptions.InsufficientBalanceException;
 import com.bancopago.backend.domain.account.exceptions.InvalidAccountException;
 import com.bancopago.backend.domain.account.exceptions.InvalidAccountStateException;
 import com.bancopago.backend.domain.account.exceptions.InvalidAmountException;
 import com.bancopago.backend.domain.account.vo.AccountNumber;
 import com.bancopago.backend.domain.account.vo.Money;
+import com.bancopago.backend.domain.enums.AccountOperation;
 import com.bancopago.backend.domain.enums.AccountStatus;
 import com.bancopago.backend.domain.enums.AccountType;
 import com.bancopago.backend.domain.enums.Currency;
@@ -52,21 +52,24 @@ public class AccountDomain extends BaseDomain {
 
     public void block() {
         if (this.status != AccountStatus.ACTIVE) {
-            throw InvalidAccountStateException.create(getId(), this.status, "block");
+            throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.BLOCK);
         }
         this.status = AccountStatus.BLOCKED;
     }
 
     public void unblock() {
         if (this.status != AccountStatus.BLOCKED) {
-            throw InvalidAccountStateException.create(getId(), this.status, "unblock");
+            throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.UNBLOCK);
         }
         this.status = AccountStatus.ACTIVE;
     }
 
     public void close() {
         if (this.status == AccountStatus.INACTIVE) {
-            throw InvalidAccountStateException.create(getId(), this.status, "close");
+            throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.CLOSE);
+        }
+        if (this.balance.amount().compareTo(BigDecimal.ZERO) > 0) {
+            throw InvalidAccountException.create(AccountError.CLOSE_WITH_BALANCE, getId(), this.balance.amount());
         }
         this.status = AccountStatus.INACTIVE;
     }
@@ -82,7 +85,7 @@ public class AccountDomain extends BaseDomain {
             throw AccountBlockedException.create(getId());
         }
         if (this.status == AccountStatus.INACTIVE) {
-            throw InvalidAccountStateException.create(getId(), this.status, "operate");
+            throw InvalidAccountStateException.create(getId(), this.status, AccountOperation.OPERATE);
         }
     }
 
