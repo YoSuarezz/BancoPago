@@ -3,9 +3,9 @@ package com.bancopago.backend.application.primaryports.interactor.auth.impl;
 import com.bancopago.backend.application.primaryports.dto.auth.request.RegisterRequest;
 import com.bancopago.backend.application.primaryports.dto.auth.response.AuthResponse;
 import com.bancopago.backend.application.primaryports.interactor.auth.RegisterInteractor;
+import com.bancopago.backend.application.primaryports.mapper.auth.AuthDTOMapper;
+import com.bancopago.backend.application.secondaryports.service.TokenService;
 import com.bancopago.backend.application.usecase.auth.RegisterUseCase;
-import com.bancopago.backend.domain.auth.UserDomain;
-import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -13,22 +13,21 @@ import reactor.core.publisher.Mono;
 public class RegisterInteractorImpl implements RegisterInteractor {
 
     private final RegisterUseCase registerUseCase;
-    private final JwtService jwtService;
+    private final TokenService tokenService;
+    private final AuthDTOMapper authDTOMapper;
 
-    public RegisterInteractorImpl(RegisterUseCase registerUseCase, JwtService jwtService) {
+    public RegisterInteractorImpl(RegisterUseCase registerUseCase,
+                                   TokenService tokenService,
+                                   AuthDTOMapper authDTOMapper) {
         this.registerUseCase = registerUseCase;
-        this.jwtService = jwtService;
+        this.tokenService = tokenService;
+        this.authDTOMapper = authDTOMapper;
     }
 
     @Override
     public Mono<AuthResponse> execute(RegisterRequest request) {
-        UserDomain newUser = UserDomain.create(
-                request.email(),
-                request.password(),
-                request.role(),
-                null
-        );
-        return registerUseCase.execute(newUser)
-                .map(saved -> AuthResponse.of(jwtService.generateToken(saved), saved.getEmail(), saved.getRole()));
+        var user = authDTOMapper.toUserDomain(request);
+        return registerUseCase.execute(user)
+                .map(saved -> authDTOMapper.toAuthResponse(saved, tokenService.generateToken(saved)));
     }
 }

@@ -1,5 +1,6 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.jwt;
 
+import com.bancopago.backend.application.secondaryports.service.TokenService;
 import com.bancopago.backend.domain.auth.UserDomain;
 import com.bancopago.backend.domain.enums.UserRole;
 import io.jsonwebtoken.Claims;
@@ -15,7 +16,7 @@ import java.util.Date;
 import java.util.UUID;
 
 @Component
-public class JwtService {
+public class JwtService implements TokenService {
 
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_USER_ID = "userId";

@@ -30,3 +30,5 @@ frontend/coverage/
 .env
 .env.*
 !.env.example
+docs/bancopago_proyecto_practica.md
+docs/guia_bancolombia_swe_backend_pagos_v2.md

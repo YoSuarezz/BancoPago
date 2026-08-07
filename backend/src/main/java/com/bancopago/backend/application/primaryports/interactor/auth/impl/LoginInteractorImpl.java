@@ -3,9 +3,9 @@ package com.bancopago.backend.application.primaryports.interactor.auth.impl;
 import com.bancopago.backend.application.primaryports.dto.auth.request.LoginRequest;
 import com.bancopago.backend.application.primaryports.dto.auth.response.AuthResponse;
 import com.bancopago.backend.application.primaryports.interactor.auth.LoginInteractor;
+import com.bancopago.backend.application.primaryports.mapper.auth.AuthDTOMapper;
+import com.bancopago.backend.application.secondaryports.service.TokenService;
 import com.bancopago.backend.application.usecase.auth.LoginUseCase;
-import com.bancopago.backend.domain.auth.LoginCredential;
-import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -13,17 +13,21 @@ import reactor.core.publisher.Mono;
 public class LoginInteractorImpl implements LoginInteractor {
 
     private final LoginUseCase loginUseCase;
-    private final JwtService jwtService;
+    private final TokenService tokenService;
+    private final AuthDTOMapper authDTOMapper;
 
-    public LoginInteractorImpl(LoginUseCase loginUseCase, JwtService jwtService) {
+    public LoginInteractorImpl(LoginUseCase loginUseCase,
+                                TokenService tokenService,
+                                AuthDTOMapper authDTOMapper) {
         this.loginUseCase = loginUseCase;
-        this.jwtService = jwtService;
+        this.tokenService = tokenService;
+        this.authDTOMapper = authDTOMapper;
     }
 
     @Override
     public Mono<AuthResponse> execute(LoginRequest request) {
-        var credential = new LoginCredential(request.email(), request.password());
+        var credential = authDTOMapper.toLoginCredential(request);
         return loginUseCase.execute(credential)
-                .map(user -> AuthResponse.of(jwtService.generateToken(user), user.getEmail(), user.getRole()));
+                .map(user -> authDTOMapper.toAuthResponse(user, tokenService.generateToken(user)));
     }
 }
