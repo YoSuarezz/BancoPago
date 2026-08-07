@@ -1,6 +1,7 @@
 package com.bancopago.backend.infrastructure.secondaryadapters.config;
 
 import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtAuthenticationFilter;
+import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -18,14 +19,14 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
+        return new JwtAuthenticationFilter(jwtService);
     }
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http,
+                                                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
