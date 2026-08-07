@@ -2,6 +2,7 @@ package com.bancopago.backend.infrastructure.secondaryadapters.config;
 
 import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtAuthenticationFilter;
 import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,13 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
+
+    @Bean
+    public JwtService jwtService(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
+        return new JwtService(secret, expirationMs);
+    }
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
