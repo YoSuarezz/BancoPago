@@ -11,15 +11,18 @@ import com.bancopago.backend.application.primaryports.interactor.account.GetAcco
 import com.bancopago.backend.application.primaryports.interactor.account.UnblockAccountInteractor;
 import com.bancopago.backend.infrastructure.GlobalExceptionHandler;
 import com.bancopago.backend.infrastructure.ResponseMessages;
-import com.bancopago.backend.infrastructure.secondaryadapters.config.SecurityConfig;
+import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -28,7 +31,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(controllers = AccountController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import(GlobalExceptionHandler.class)
+@WithMockUser
 class AccountControllerTest {
 
     @Autowired
@@ -49,6 +53,9 @@ class AccountControllerTest {
     @MockitoBean
     private CloseAccountInteractor closeAccountInteractor;
 
+    @MockitoBean
+    private JwtService jwtService;
+
     @Test
     void createAccount_returns201() {
         UUID id = UUID.randomUUID();
@@ -58,7 +65,7 @@ class AccountControllerTest {
                         id, ownerId, "5300000001", "SAVINGS",
                         BigDecimal.ZERO, "COP", "ACTIVE")));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/accounts")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
@@ -97,7 +104,7 @@ class AccountControllerTest {
                 .thenReturn(Mono.just(new AccountStatusResponse(
                         id, "5300000001", "BLOCKED", BigDecimal.ZERO)));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/accounts/{id}/block", id)
                 .exchange()
                 .expectStatus().isOk()

@@ -8,15 +8,18 @@ import com.bancopago.backend.application.primaryports.interactor.person.GetPerso
 import com.bancopago.backend.domain.person.exceptions.PersonNotFoundException;
 import com.bancopago.backend.infrastructure.GlobalExceptionHandler;
 import com.bancopago.backend.infrastructure.ResponseMessages;
-import com.bancopago.backend.infrastructure.secondaryadapters.config.SecurityConfig;
+import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -25,7 +28,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(controllers = PersonController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import(GlobalExceptionHandler.class)
+@WithMockUser
 class PersonControllerTest {
 
     @Autowired
@@ -37,6 +41,9 @@ class PersonControllerTest {
     @MockitoBean
     private GetPersonByIdInteractor getPersonByIdInteractor;
 
+    @MockitoBean
+    private JwtService jwtService;
+
     @Test
     void createPerson_returns201() {
         UUID id = UUID.randomUUID();
@@ -45,7 +52,7 @@ class PersonControllerTest {
                         id, "Ana", "123", "CC", "ana@test.com", null,
                         "CLIENT", "C-1", LocalDate.now())));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/persons")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
