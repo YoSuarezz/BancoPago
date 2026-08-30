@@ -14,7 +14,6 @@ public record CreatePersonRequest(
         @NotBlank @Email String email,
         String phone,
         @NotNull PersonType personType,
-        String clientNumber,
         String position,
         String area,
         String costCenter,

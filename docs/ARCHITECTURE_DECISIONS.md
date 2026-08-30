@@ -1,7 +1,7 @@
 # Decisiones de Arquitectura — BancoPago
 
 *Versión: 2.0*
-*Última actualización: Julio 2026*
+*Última actualización: Agosto 2026*
 *Idioma: Español (documentación), columnas BD en inglés, mensajes de error en español*
 
 ---
@@ -24,6 +24,21 @@ crosscutting  →  domain  →  application  →  infrastructure
 - **application** → Solo depende de domain.
 - **infrastructure** → Implementa puertos de application + domain.
 - **crosscutting** → Helpers, excepciones base, ErrorCode. Disponible para todas las capas.
+
+### Puertos secundarios (`secondaryports`)
+
+`application/secondaryports/` contiene **únicamente interfaces** de repositorio (`repository/`).
+Son contratos de salida que los use cases consumen; hablan en términos de **Domain**
+(`Mono<AccountDomain>`, `Flux<PersonDomain>`, etc.).
+
+| Pieza | Ubicación | Motivo |
+|-------|-----------|--------|
+| Puerto de repo (`AccountRepository`) | `application/secondaryports/repository/` | Application define *qué* necesita de persistencia |
+| Entidad R2DBC (`AccountEntity`) | `infrastructure/secondaryadapters/r2dbc/entity/` | Depende de Spring Data; detalle del adaptador |
+| Mapper Entity↔Domain | `infrastructure/secondaryadapters/r2dbc/mapper/` | Solo lo usa el adapter R2DBC |
+| Adapter (`AccountR2dbcAdapter`) | `infrastructure/secondaryadapters/r2dbc/{module}/` | Implementa el puerto; traduce Domain ↔ Entity |
+
+Los use cases **nunca** importan `*Entity`. El adapter es el único que conoce ambos modelos.
 
 ### Elección del Stack Reactivo
 
@@ -88,9 +103,7 @@ backend/src/main/java/com/bancopago/backend/
 │   │   ├── interactor/{module}/(+ impl/) # Puerto de entrada (Controller → aquí)
 │   │   └── mapper/{module}/              # MapStruct DTO ↔ Domain
 │   ├── secondaryports/
-│   │   ├── entity/                       # Entidades R2DBC @Table
-│   │   ├── repository/                   # Puertos de repositorio reactivos
-│   │   └── mapper/                       # Mapeo manual Entity ↔ Domain
+│   │   └── repository/                   # Puertos de repositorio reactivos (Domain in/out)
 │   └── usecase/
 │       ├── Rule.java                     # Regla granular (Mono<Void>)
 │       ├── RulesValidator.java
@@ -101,11 +114,13 @@ backend/src/main/java/com/bancopago/backend/
 │
 ├── infrastructure/
 │   ├── primaryadapters/
-│   │   ├── controller/{module}/          # PersonController, AccountController (@Valid + ApiResponse)
-│   │   └── adapter/response/             # Response / ApiResponse (envelope HTTP)
+│   │   ├── controller/{module}/          # PersonController, AccountController (@Valid + HttpResponses/SseEvents)
+│   │   └── adapter/response/             # ApiResponse, HttpResponses, SseEvents
 │   ├── secondaryadapters/
 │   │   ├── config/                       # SecurityConfig (permitAll local; JWT después)
 │   │   └── r2dbc/
+│   │       ├── entity/                   # Entidades R2DBC @Table (detalle del adaptador)
+│   │       ├── mapper/                   # Mapeo manual Entity ↔ Domain
 │   │       ├── {module}/                 # Adapter + Spring Data repo
 │   │       └── config/                   # Persistable callbacks, etc.
 │   ├── GlobalExceptionHandler.java       # DomainException → HTTP status
@@ -223,7 +238,7 @@ public class AccountBlockedException extends DomainException {
 |-----------|-------------|-------|
 | **Domain → Response** | **MapStruct** (`abstract class @Mapper`) | Mapeo casi 1:1; renombres/`ignore`; crece con más endpoints |
 | **Request → Domain** (VOs/herencia) | Método **concreto** en el mismo `*DTOMapper` | Actúa como factory de aplicación; MapStruct no genera bien Client/Employee + VOs |
-| **Entity ↔ Domain** | **Manual** (`@Component`) | VOs, `PersonDomain` abstracta, enums como `String` |
+| **Entity ↔ Domain** | **Manual** (`@Component` en `infrastructure/.../r2dbc/mapper/`) | VOs, `PersonDomain` abstracta, enums como `String` |
 
 **No** forzar MapStruct en Entity↔Domain ni en Request→Domain rico.  
 **No** adoptar Assembler/Factory como convención global: solo si un Response junta varios agregados (`*ResponseAssembler`) o el `toPersonDomain` de Person crece demasiado (`PersonDomainFactory` en application).
@@ -243,6 +258,9 @@ public AccountDomain toAccountDomain(AccountEntity entity) {
 ```
 
 ### 3.5 Patrón de Entidad (R2DBC)
+
+Ubicación: `infrastructure/secondaryadapters/r2dbc/entity/`. No va en `secondaryports` porque
+acopla la capa de aplicación a Spring Data R2DBC.
 
 ```java
 @Table("account")
@@ -278,7 +296,7 @@ Controller (@Valid DTO)
 
 | Pieza | Responsabilidad |
 |-------|-----------------|
-| **Interactor** | DTO ↔ Domain (mapper) + delegar al UseCase. No valida con repo ni persiste. |
+| **Interactor** | DTO ↔ Domain (mapper) + delegar al UseCase. Devuelve DTO (o `Flux<DTO>`). No valida con repo, no persiste, **no conoce HTTP**. |
 | **UseCase** | Recibe/devuelve **Domain**. Valida (RulesValidator) → opera → `repository.save/find`. |
 | **RulesValidator** | Solo reglas con estado (unicidad, existencia). Inline con repos. |
 | **Repository** | Puerto Domain in/out. **No** Entity en UseCase. |
@@ -341,7 +359,7 @@ public Mono<Void> validate(AccountDomain account) {
 
 Ubicación: `rulesvalidator/rules/` (interfaces) + `rules/impl/` (implementaciones). Nunca en `domain/`.
 
-Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule`.
+Rules Módulo 1: `UniqueDocumentRule`, `UniqueEmailRule`, `OwnerExistsRule`, `MaxAccountsPerOwnerRule`, `UniqueAccountTypePerOwnerRule`, `UniqueAccountNumberRule`, `AccountExistsRule`.
 Block/Unblock/Close no usan RulesValidator: cargan la cuenta, aplican el método de dominio y guardan.
 
 Invariantes de dominio (Person): `clientNumber` obligatorio en `ClientDomain`; `position` + `area` obligatorios en `EmployeeDomain`.
@@ -413,7 +431,8 @@ El número de cuenta se genera en el **Interactor** (arma `AccountDomain` comple
 | Controlador | PascalCase + `Controller` | `AccountController` |
 | DTO Request | PascalCase + `Request` | `CreateAccountRequest` |
 | DTO Response (caso de uso) | PascalCase + operación + `Response` | `CreateAccountResponse` |
-| Envelope HTTP | `Response` / `ApiResponse` | `ApiResponse.of(dto)` / `ApiResponse.of(dto, ResponseMessages.X)` |
+| Envelope HTTP | `HttpResponses` + `ApiResponse` | `HttpResponses.created(mono, msg)` / `HttpResponses.ok(mono)` / `okList` |
+| SSE | `SseEvents` | `SseEvents.map(flux, SseEvents.BALANCE)` |
 | Paquetes | minusculas.singular | `domain.account`, `application.usecase` |
 | Métodos de repositorio (puerto) | `verb` + recurso + criterio | `savePerson`, `findAccountByNumber`, `existsPersonByDocument`, `findAccountsByOwnerId` |
 | Métodos de controller | `verb` + recurso (+ criterio) | `createPerson`, `getAccountBalance`, `blockAccount` |
@@ -446,7 +465,8 @@ No usar un único `PATCH /accounts/{id}/estado`: cada transición es un use case
 - **Helpers:** `TextHelper.applyTrim()`, `ObjectHelper.getDefault()`, `ObjectHelper.requireNonNull()`.
 - **MapStruct** preferente para Domain→Response. Request→Domain rico y Entity↔Domain: manual. Sin Assembler/Factory globales por defecto.
 - **Sin `if (x == null)`** — usar `TextHelper.isBlank()` o `ObjectHelper.requireNonNull()`.
-- **UseCase / Interactor:** interfaz vacía que extiende la base; impl con `execute`. Repos concretos mantienen métodos explícitos (`saveAccount`, `findAccountById`).
+- **UseCase / Interactor:** interfaz vacía que extiende la base; impl con `execute`. Repos concretos mantienen métodos explícitos (`saveAccount`, `findAccountById`). Interactor **no** importa Spring Web (`ApiResponse`, `ServerSentEvent`).
+- **Controller delgado:** solo `@Valid` + llamada al Interactor + `HttpResponses` / `SseEvents`. No armar envelopes inline.
 - **RulesValidator** concentra reglas con acceso a repositorio; el UseCase solo orquesta.
 - **Comentarios:** solo cuando aportan el *porqué* (no narrar el código). En español.
 
@@ -532,10 +552,9 @@ Cada implementación de funcionalidad se mapea a un slice vertical a través de 
 
 **Ejemplo concreto — estado actual:**
 
-Módulo 1 (Person + Account): domain → Controllers REST (`/api/v1/persons`, `/api/v1/accounts` + block/unblock/close), `GlobalExceptionHandler` y `SecurityConfig` (permitAll local) están implementados. Pendiente:
+Módulo 1 (Person + Account): domain → Controllers REST (`/api/v1/persons`, `/api/v1/accounts` + balance/stream + list + block/unblock/close), `HttpResponses`/`SseEvents`, `GlobalExceptionHandler`, CORS y `SecurityConfig` (permitAll local) están implementados. Pendiente:
 
 | Issue | Capas Necesarias |
 |-------|------------------|
-| SSE balance stream | application/usecase + infrastructure/controller |
-| Angular dashboard | frontend/ |
 | JWT real | infrastructure/secondaryadapters/config |
+| Transferencias P2P (Módulo 2) | domain + application + Redis |

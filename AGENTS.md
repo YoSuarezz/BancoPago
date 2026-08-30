@@ -28,4 +28,6 @@ Postgres + Redis run via `docker-compose.yml`, and backend tests use Testcontain
 
 ### Frontend
 - Run: `cd frontend && npm start` (ng serve, `http://localhost:4200`). Tests: `npm test` (Jest via `jest-preset-angular`).
-- The app is currently the default Angular scaffold with empty routes; there is no business UI wired to the backend yet.
+- Dashboard en `/accounts`: registrar persona, abrir cuenta, listar por `ownerId`, saldo live vía SSE (`EventSource` → `/api/v1/accounts/{accountId}/balance/stream`, evento `balance`).
+- **IDs:** lista usa UUID de persona (`ownerId`); SSE usa UUID de cuenta (`accountId`). Confundirlos produce “cuenta no existe” / EventSource cerrado.
+- Design system: regla `.cursor/rules/frontend-bancolombia-design.mdc` + skill `.cursor/skills/bancopago-frontend/`. Backend CORS permite `localhost`.

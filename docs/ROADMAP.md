@@ -2,7 +2,7 @@
 
 | # | Módulo | Estado | Rama |
 |---|--------|--------|------|
-| 1 | Gestión de Cuentas y Usuarios | 🟡 En Progreso | `feature/rest-person-account-api` |
+| 1 | Gestión de Cuentas y Usuarios | ✅ Completado | `feature/account-balance-sse` |
 | 2 | Transferencias P2P | 🔲 Pendiente | - |
 | 3 | Nómina de Empleados | 🔲 Pendiente | - |
 | 4 | Pagos a Proveedores | 🔲 Pendiente | - |
@@ -30,8 +30,8 @@
 | 1.10 | Casos de uso + Interactors + RulesValidators (Person/Account) | ✅ Completado (`feature/person-account-use-cases`) |
 | 1.11 | Controllers REST + GlobalExceptionHandler + SecurityConfig + ResponseMessages | ✅ Completado (`feature/rest-person-account-api`) |
 | 1.11b | Persistencia subtipos Person + UniqueAccountTypePerOwner + validaciones domain/Jakarta | ✅ Completado |
-| 1.12 | Stream SSE de saldo | 🔲 Pendiente |
-| 1.13 | Dashboard Angular de cuentas | 🔲 Pendiente |
+| 1.12 | Stream SSE de saldo (`GET .../balance/stream`) + listado por owner | ✅ Completado (`feature/account-balance-sse`) |
+| 1.13 | Dashboard Angular de cuentas | ✅ Completado (`feature/account-balance-sse`) |
 
 ## Módulo 2 — Transferencias P2P
 

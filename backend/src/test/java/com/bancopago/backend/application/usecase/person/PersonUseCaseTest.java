@@ -42,15 +42,9 @@ class PersonUseCaseTest {
     }
 
     @Test
-    @DisplayName("should create person when document is unique")
-    void shouldCreatePersonWhenDocumentIsUnique() {
-        var domain = new ClientDomain(
-                "Ana Gomez",
-                new DocumentNumber(DocumentType.CC, "100200300"),
-                new Email("ana@example.com"),
-                "3001112233",
-                "CLI-1"
-        );
+    @DisplayName("should save person when rules pass")
+    void shouldSavePersonWhenRulesPass() {
+        var domain = clientDomain();
 
         when(rulesValidator.validate(domain)).thenReturn(Mono.empty());
         when(personRepository.savePerson(domain)).thenReturn(Mono.just(domain));
@@ -66,13 +60,7 @@ class PersonUseCaseTest {
     @Test
     @DisplayName("should fail when document already exists")
     void shouldFailWhenDocumentAlreadyExists() {
-        var domain = new ClientDomain(
-                "Ana Gomez",
-                new DocumentNumber(DocumentType.CC, "100200300"),
-                new Email("ana@example.com"),
-                "3001112233",
-                "CLI-1"
-        );
+        var domain = clientDomain();
 
         when(rulesValidator.validate(domain))
                 .thenReturn(Mono.error(DuplicateDocumentException.create("100200300")));
@@ -83,8 +71,8 @@ class PersonUseCaseTest {
     }
 
     @Test
-    @DisplayName("should fail when person id is not found")
-    void shouldFailWhenPersonIdIsNotFound() {
+    @DisplayName("should fail when person not found by id")
+    void shouldFailWhenPersonNotFoundById() {
         UUID missingId = UUID.randomUUID();
         when(personRepository.findPersonById(missingId)).thenReturn(Mono.empty());
 
@@ -96,17 +84,21 @@ class PersonUseCaseTest {
     @Test
     @DisplayName("should get person by id")
     void shouldGetPersonById() {
-        var domain = new ClientDomain(
+        var domain = clientDomain();
+        when(personRepository.findPersonById(domain.getId())).thenReturn(Mono.just(domain));
+
+        StepVerifier.create(getPersonByIdUseCase.execute(domain.getId()))
+                .assertNext(result -> assertEquals(domain.getId(), result.getId()))
+                .verifyComplete();
+    }
+
+    private static ClientDomain clientDomain() {
+        return new ClientDomain(
                 "Ana Gomez",
                 new DocumentNumber(DocumentType.CC, "100200300"),
                 new Email("ana@example.com"),
                 "3001112233",
                 "CLI-1"
         );
-        when(personRepository.findPersonById(domain.getId())).thenReturn(Mono.just(domain));
-
-        StepVerifier.create(getPersonByIdUseCase.execute(domain.getId()))
-                .assertNext(result -> assertEquals(domain.getId(), result.getId()))
-                .verifyComplete();
     }
 }
