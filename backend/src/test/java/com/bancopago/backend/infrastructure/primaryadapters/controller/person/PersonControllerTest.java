@@ -8,7 +8,6 @@ import com.bancopago.backend.application.primaryports.interactor.person.GetPerso
 import com.bancopago.backend.domain.person.exceptions.PersonNotFoundException;
 import com.bancopago.backend.infrastructure.GlobalExceptionHandler;
 import com.bancopago.backend.infrastructure.ResponseMessages;
-import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
@@ -40,9 +39,6 @@ class PersonControllerTest {
 
     @MockitoBean
     private GetPersonByIdInteractor getPersonByIdInteractor;
-
-    @MockitoBean
-    private JwtService jwtService;
 
     @Test
     void createPerson_returns201() {

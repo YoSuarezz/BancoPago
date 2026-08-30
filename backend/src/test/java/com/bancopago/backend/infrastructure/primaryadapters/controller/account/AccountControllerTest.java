@@ -11,7 +11,6 @@ import com.bancopago.backend.application.primaryports.interactor.account.GetAcco
 import com.bancopago.backend.application.primaryports.interactor.account.UnblockAccountInteractor;
 import com.bancopago.backend.infrastructure.GlobalExceptionHandler;
 import com.bancopago.backend.infrastructure.ResponseMessages;
-import com.bancopago.backend.infrastructure.secondaryadapters.jwt.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
@@ -52,9 +51,6 @@ class AccountControllerTest {
 
     @MockitoBean
     private CloseAccountInteractor closeAccountInteractor;
-
-    @MockitoBean
-    private JwtService jwtService;
 
     @Test
     void createAccount_returns201() {
