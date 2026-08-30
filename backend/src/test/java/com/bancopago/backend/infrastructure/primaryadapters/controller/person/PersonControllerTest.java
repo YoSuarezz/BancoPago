@@ -90,7 +90,7 @@ class PersonControllerTest {
                         id, "Carlos", "456", "CC", "carlos@test.com", null,
                         "EMPLOYEE", "Dev", "Engineering", "CC-1", "PERMANENT")));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/persons")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
@@ -116,7 +116,7 @@ class PersonControllerTest {
 
     @Test
     void createPerson_returns400WhenNameMissing() {
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/persons")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""

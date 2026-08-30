@@ -171,7 +171,7 @@ class AccountControllerTest {
                 .thenReturn(Mono.just(new AccountStatusResponse(
                         id, "5300000001", "ACTIVE", BigDecimal.ZERO)));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/accounts/{id}/unblock", id)
                 .exchange()
                 .expectStatus().isOk()
@@ -187,7 +187,7 @@ class AccountControllerTest {
                 .thenReturn(Mono.just(new AccountStatusResponse(
                         id, "5300000001", "INACTIVE", BigDecimal.ZERO)));
 
-        webTestClient.post()
+        webTestClient.mutateWith(csrf()).post()
                 .uri("/api/v1/accounts/{id}/close", id)
                 .exchange()
                 .expectStatus().isOk()
