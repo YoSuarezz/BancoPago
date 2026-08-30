@@ -1,7 +1,5 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
-
 This repo is a two-part app: a Spring Boot 4 / WebFlux reactive backend (`backend/`, Java 21, Maven wrapper `./mvnw`, port 8080) and an Angular 18 frontend (`frontend/`, npm, dev server port 4200). Standard run commands live in `README.md`; commit/test conventions in `CONTRIBUTING.md`.
 
 Dependency refresh (Maven `dependency:go-offline` + `npm install`) is handled by the startup update script, so it is not repeated here. The notes below are non-obvious startup/run caveats.
@@ -16,10 +14,10 @@ Postgres + Redis run via `docker-compose.yml`, and backend tests use Testcontain
 ### Backend
 - Run: `cd backend && ./mvnw spring-boot:run` (needs Postgres+Redis up first; Flyway migrates on startup). Health at `http://localhost:8080/actuator/health` (public, shows r2dbc + redis status).
 - The committed `mvnw` may lack the executable bit; the update script `chmod +x` it, otherwise use `sh mvnw`.
-- Tests: `./mvnw test` (36 domain + context-load tests; the context-load test spins up an ephemeral Testcontainers Postgres, so Docker must be running).
+- Tests: `./mvnw test` (unit tests run without Docker; integration tests use Testcontainers Postgres, so Docker must be running for the full suite).
 
-### Spring Security (`SecurityConfig` — permitAll local)
-`infrastructure/secondaryadapters/config/SecurityConfig` opens `/api/**`, `/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`, `/actuator/health`, and `/actuator/info` (CSRF off; HTTP Basic and form login disabled). No generated password. JWT auth is out of scope for now — tighten `authorizeExchange` when it lands. Swagger UI: `http://localhost:8080/swagger-ui.html`.
+### Spring Security & JWT Authentication
+`SecurityConfig` secures `/api/**` with JWT (CSRF off; HTTP Basic and form login disabled). Public paths: `/api/v1/auth/**`, `/api-docs/**`, `/swagger-ui/**`, `/actuator/health`, `/actuator/info`. `JwtAuthenticationFilter` (reactive `WebFilter`) extracts the Bearer token and populates `ReactiveSecurityContextHolder`. `JwtService` generates/validates HS256 tokens via JJWT. Roles: `ROL_CLIENTE`, `ROL_ADMIN`. Config: `jwt.secret` and `jwt.expiration-ms` in `application.yml` (env vars `JWT_SECRET`, `JWT_EXPIRATION_MS`). Swagger UI: `http://localhost:8080/swagger-ui.html`.
 
 ### API responses (Module 1)
 - Success envelope: `ApiResponse` with Spanish messages from `infrastructure/ResponseMessages` (do not hardcode strings in controllers).
