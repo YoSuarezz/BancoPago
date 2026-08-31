@@ -9,4 +9,11 @@ export const routes: Routes = [
         (m) => m.AccountsListComponent
       ),
   },
+  {
+    path: 'transfers',
+    loadChildren: () =>
+      import('./features/transfers/transfers.routes').then(
+        (m) => m.TRANSFERS_ROUTES
+      ),
+  },
 ];

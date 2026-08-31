@@ -18,6 +18,12 @@ export const PERSON_TYPE_LABEL: Record<string, string> = {
   EMPLOYEE: 'Empleado',
 };
 
+export const TRANSFER_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Pendiente',
+  COMPLETED: 'Completada',
+  FAILED: 'Fallida',
+};
+
 export const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   CC: 'Cedula de ciudadania',
   CE: 'Cedula de extranjeria',

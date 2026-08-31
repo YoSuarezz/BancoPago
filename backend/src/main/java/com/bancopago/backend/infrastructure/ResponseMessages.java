@@ -10,4 +10,5 @@ public final class ResponseMessages {
     public static final String ACCOUNT_BLOCKED = "Cuenta bloqueada exitosamente";
     public static final String ACCOUNT_UNBLOCKED = "Cuenta desbloqueada exitosamente";
     public static final String ACCOUNT_CLOSED = "Cuenta cerrada exitosamente";
+    public static final String TRANSFER_CREATED = "Transferencia realizada exitosamente";
 }

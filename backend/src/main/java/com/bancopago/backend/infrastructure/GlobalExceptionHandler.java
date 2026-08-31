@@ -17,6 +17,10 @@ import com.bancopago.backend.domain.person.exceptions.DuplicateDocumentException
 import com.bancopago.backend.domain.person.exceptions.DuplicateEmailException;
 import com.bancopago.backend.domain.person.exceptions.InvalidPersonException;
 import com.bancopago.backend.domain.person.exceptions.PersonNotFoundException;
+import com.bancopago.backend.domain.transfer.exceptions.DuplicateIdempotencyKeyException;
+import com.bancopago.backend.domain.transfer.exceptions.InvalidTransferException;
+import com.bancopago.backend.domain.transfer.exceptions.SameAccountTransferException;
+import com.bancopago.backend.domain.transfer.exceptions.TransferNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -43,7 +47,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             PersonNotFoundException.class,
             AccountNotFoundException.class,
-            UserNotFoundException.class
+            UserNotFoundException.class,
+            TransferNotFoundException.class
     })
     public Mono<ResponseEntity<ErrorResponse>> handleNotFound(DomainException ex) {
         return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(toError(ex)));
@@ -56,7 +61,8 @@ public class GlobalExceptionHandler {
             DuplicateAccountTypeException.class,
             AccountBlockedException.class,
             MaxAccountsExceededException.class,
-            DuplicateUserEmailException.class
+            DuplicateUserEmailException.class,
+            DuplicateIdempotencyKeyException.class
     })
     public Mono<ResponseEntity<ErrorResponse>> handleConflict(DomainException ex) {
         return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body(toError(ex)));
@@ -67,7 +73,9 @@ public class GlobalExceptionHandler {
             InvalidAccountException.class,
             InvalidPersonException.class,
             InvalidAmountException.class,
-            InsufficientBalanceException.class
+            InsufficientBalanceException.class,
+            InvalidTransferException.class,
+            SameAccountTransferException.class
     })
     public Mono<ResponseEntity<ErrorResponse>> handleBadRequest(DomainException ex) {
         return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(toError(ex)));

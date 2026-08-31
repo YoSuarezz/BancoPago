@@ -2,6 +2,7 @@ package com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.config;
 
 import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.AccountEntity;
 import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.PersonEntity;
+import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.TransferEntity;
 import com.bancopago.backend.infrastructure.secondaryadapters.r2dbc.entity.UserEntity;
 import org.reactivestreams.Publisher;
 import org.springframework.context.annotation.Bean;
@@ -40,6 +41,17 @@ public class R2dbcPersistableConfig {
         return new AfterConvertCallback<>() {
             @Override
             public Publisher<UserEntity> onAfterConvert(UserEntity entity, SqlIdentifier table) {
+                entity.markPersisted();
+                return Mono.just(entity);
+            }
+        };
+    }
+
+    @Bean
+    AfterConvertCallback<TransferEntity> transferAfterConvertCallback() {
+        return new AfterConvertCallback<>() {
+            @Override
+            public Publisher<TransferEntity> onAfterConvert(TransferEntity entity, SqlIdentifier table) {
                 entity.markPersisted();
                 return Mono.just(entity);
             }

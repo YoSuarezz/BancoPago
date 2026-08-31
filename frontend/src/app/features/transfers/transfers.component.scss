@@ -1,0 +1,232 @@
+.desk {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  animation: bp-rise 0.55s var(--bp-ease) both;
+}
+
+.desk__hero {
+  margin-bottom: 1.75rem;
+}
+
+.desk__kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bp-ink);
+  background: var(--bp-yellow);
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+}
+
+.desk__hero h1 {
+  margin: 0.75rem 0 0.5rem;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.desk__lead {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--bp-muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.desk__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.tab {
+  border: 1px solid var(--bp-line);
+  background: transparent;
+  color: var(--bp-muted);
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s var(--bp-ease), color 0.2s var(--bp-ease), border-color 0.2s;
+}
+
+.tab:hover {
+  color: var(--bp-ink);
+  border-color: var(--bp-ink);
+}
+
+.tab--active {
+  background: var(--bp-ink);
+  border-color: var(--bp-ink);
+  color: var(--bp-yellow);
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: var(--bp-card);
+  border: 1px solid var(--bp-line);
+  border-radius: var(--bp-radius);
+  box-shadow: var(--bp-shadow);
+  animation: bp-rise 0.4s var(--bp-ease) both;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.field span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--bp-muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--bp-line);
+  border-radius: 0.65rem;
+  background: #fafaf8;
+  color: var(--bp-ink);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid var(--bp-yellow);
+  outline-offset: 1px;
+  border-color: var(--bp-ink);
+}
+
+.actions {
+  grid-column: 1 / -1;
+}
+
+.btn {
+  justify-self: start;
+  border: none;
+  cursor: pointer;
+  padding: 0.75rem 1.2rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  transition: transform 0.15s var(--bp-ease), background 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--bp-yellow);
+  color: var(--bp-ink);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--bp-yellow-deep);
+  transform: translateY(-1px);
+}
+
+.banner {
+  display: block;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.banner--error {
+  background: var(--bp-danger-bg);
+  color: var(--bp-danger);
+}
+
+.banner--ok {
+  background: var(--bp-ok-bg);
+  color: var(--bp-ok);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bp-muted);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid var(--bp-line);
+}
+
+.table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--bp-line);
+  color: var(--bp-ink);
+}
+
+.table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--bp-warn-bg);
+  color: var(--bp-warn);
+}
+
+.badge--ok {
+  background: var(--bp-ok-bg);
+  color: var(--bp-ok);
+}
+
+.badge--warn {
+  background: var(--bp-warn-bg);
+  color: var(--bp-warn);
+}
+
+.badge--error {
+  background: var(--bp-danger-bg);
+  color: var(--bp-danger);
+}
+
+@media (max-width: 560px) {
+  .desk {
+    padding-top: 1.25rem;
+  }
+}
